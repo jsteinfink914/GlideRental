@@ -218,6 +218,40 @@ export class MemStorage implements IStorage {
       
     return roommates;
   }
+  
+  // User Preferences methods
+  async getUserPreferences(userId: number): Promise<UserPreferences | undefined> {
+    return Array.from(this.userPreferences.values()).find(
+      prefs => prefs.userId === userId
+    );
+  }
+  
+  async createUserPreferences(insertPreferences: InsertUserPreferences): Promise<UserPreferences> {
+    const id = this.userPreferencesId++;
+    const now = new Date();
+    const preferences: UserPreferences = {
+      ...insertPreferences,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.userPreferences.set(id, preferences);
+    return preferences;
+  }
+  
+  async updateUserPreferences(userId: number, preferencesUpdate: Partial<UserPreferences>): Promise<UserPreferences | undefined> {
+    const preferences = await this.getUserPreferences(userId);
+    if (!preferences) return undefined;
+    
+    const now = new Date();
+    const updatedPreferences = {
+      ...preferences,
+      ...preferencesUpdate,
+      updatedAt: now
+    };
+    this.userPreferences.set(preferences.id, updatedPreferences);
+    return updatedPreferences;
+  }
 
   // Property methods
   async getProperty(id: number): Promise<Property | undefined> {
@@ -324,6 +358,96 @@ export class MemStorage implements IStorage {
     };
     this.buildings.set(id, updatedBuilding);
     return updatedBuilding;
+  }
+  
+  // Landlord Criteria methods
+  async getLandlordCriteria(propertyId: number): Promise<LandlordCriteria | undefined> {
+    return Array.from(this.landlordCriteria.values()).find(
+      criteria => criteria.propertyId === propertyId
+    );
+  }
+  
+  async createLandlordCriteria(insertCriteria: InsertLandlordCriteria): Promise<LandlordCriteria> {
+    const id = this.landlordCriteriaId++;
+    const now = new Date();
+    const criteria: LandlordCriteria = {
+      ...insertCriteria,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.landlordCriteria.set(id, criteria);
+    return criteria;
+  }
+  
+  async updateLandlordCriteria(propertyId: number, criteriaUpdate: Partial<LandlordCriteria>): Promise<LandlordCriteria | undefined> {
+    const criteria = await this.getLandlordCriteria(propertyId);
+    if (!criteria) return undefined;
+    
+    const now = new Date();
+    const updatedCriteria = {
+      ...criteria,
+      ...criteriaUpdate,
+      updatedAt: now
+    };
+    this.landlordCriteria.set(criteria.id, updatedCriteria);
+    return updatedCriteria;
+  }
+  
+  async checkRenterQualification(userId: number, propertyId: number): Promise<{qualified: boolean, reasons?: string[]}> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    const property = await this.getProperty(propertyId);
+    if (!property) throw new Error("Property not found");
+    
+    const criteria = await this.getLandlordCriteria(propertyId);
+    if (!criteria) {
+      // If no criteria set, assume everyone qualifies
+      return { qualified: true };
+    }
+    
+    const userPreferences = await this.getUserPreferences(userId);
+    const reasons: string[] = [];
+    
+    // Check minimum credit score
+    if (criteria.minCreditScore && userPreferences?.creditScore && 
+        userPreferences.creditScore < criteria.minCreditScore) {
+      reasons.push(`Credit score (${userPreferences.creditScore}) below minimum (${criteria.minCreditScore})`);
+    }
+    
+    // Check minimum income
+    if (criteria.minIncome && userPreferences?.income &&
+        userPreferences.income < criteria.minIncome) {
+      reasons.push(`Income (${userPreferences.income}) below minimum (${criteria.minIncome})`);
+    }
+    
+    // Check employment status
+    if (criteria.requiresEmploymentVerification && 
+        (!userPreferences?.isEmployed || !userPreferences?.employmentVerified)) {
+      reasons.push('Employment verification required');
+    }
+    
+    // Check rental history
+    if (criteria.requiresRentalHistory && 
+        (!userPreferences?.hasRentalHistory || !userPreferences?.rentalHistoryVerified)) {
+      reasons.push('Rental history verification required');
+    }
+    
+    // Check pets policy
+    if (!criteria.allowsPets && userPreferences?.hasPets) {
+      reasons.push('Pets not allowed');
+    }
+    
+    // Check smoking policy
+    if (!criteria.allowsSmoking && userPreferences?.isSmoker) {
+      reasons.push('Smoking not allowed');
+    }
+    
+    return {
+      qualified: reasons.length === 0,
+      reasons: reasons.length > 0 ? reasons : undefined
+    };
   }
   
   // Message methods

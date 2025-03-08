@@ -2,7 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertPropertySchema, insertSavedPropertySchema, insertMessageSchema, insertMaintenanceRequestSchema, insertPaymentSchema } from "@shared/schema";
+import { 
+  insertPropertySchema, 
+  insertSavedPropertySchema, 
+  insertMessageSchema, 
+  insertMaintenanceRequestSchema, 
+  insertPaymentSchema,
+  insertUserPreferencesSchema,
+  insertLandlordCriteriaSchema
+} from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";

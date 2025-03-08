@@ -188,7 +188,14 @@ export const userPreferences = pgTable("user_preferences", {
   bathroomsMin: real("bathrooms_min").notNull(),
   propertyTypes: text("property_types").array(),
   amenities: text("amenities").array(),
-  petFriendly: boolean("pet_friendly").default(false),
+  hasPets: boolean("has_pets").default(false),
+  isSmoker: boolean("is_smoker").default(false),
+  income: integer("income"),
+  creditScore: integer("credit_score"),
+  isEmployed: boolean("is_employed").default(false),
+  employmentVerified: boolean("employment_verified").default(false),
+  hasRentalHistory: boolean("has_rental_history").default(false),
+  rentalHistoryVerified: boolean("rental_history_verified").default(false),
   lifestyle: json("lifestyle").$type<{
     noiseLevel: string, // quiet, moderate, lively
     cleanliness: string, // very clean, generally clean, relaxed
@@ -212,10 +219,11 @@ export const landlordCriteria = pgTable("landlord_criteria", {
   id: serial("id").primaryKey(),
   propertyId: integer("property_id").notNull().unique(),
   minIncome: integer("min_income"),
-  creditScoreMin: integer("credit_score_min"),
-  requiresBackgroundCheck: boolean("requires_background_check").default(true),
-  petsAllowed: boolean("pets_allowed").default(false),
-  smokingAllowed: boolean("smoking_allowed").default(false),
+  minCreditScore: integer("min_credit_score"),
+  requiresEmploymentVerification: boolean("requires_employment_verification").default(true),
+  requiresRentalHistory: boolean("requires_rental_history").default(true),
+  allowsPets: boolean("allows_pets").default(false),
+  allowsSmoking: boolean("allows_smoking").default(false),
   leaseLength: integer("lease_length").notNull(), // in months
   requiredDocuments: text("required_documents").array(),
   additionalRequirements: text("additional_requirements"),
