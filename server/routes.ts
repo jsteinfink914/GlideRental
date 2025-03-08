@@ -487,6 +487,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Preferences (Onboarding) API
+  app.get("/api/user-preferences", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const preferences = await storage.getUserPreferences(req.user.id);
+      if (!preferences) {
+        return res.status(404).json({ message: "User preferences not found" });
+      }
+      res.json(preferences);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/user-preferences", ensureAuthenticated, async (req, res, next) => {
+    try {
+      // Check if user already has preferences
+      const existingPreferences = await storage.getUserPreferences(req.user.id);
+      if (existingPreferences) {
+        return res.status(400).json({ message: "User preferences already exist. Use PUT to update." });
+      }
+
+      const preferencesData = insertUserPreferencesSchema.parse({
+        ...req.body,
+        userId: req.user.id
+      });
+      
+      const preferences = await storage.createUserPreferences(preferencesData);
+      
+      // Mark user onboarding as completed
+      await storage.updateUser(req.user.id, { onboardingCompleted: true });
+      
+      res.status(201).json(preferences);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      next(error);
+    }
+  });
+
+  app.put("/api/user-preferences", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const preferences = await storage.getUserPreferences(req.user.id);
+      if (!preferences) {
+        return res.status(404).json({ message: "User preferences not found. Use POST to create." });
+      }
+      
+      const preferencesUpdate = req.body;
+      const updatedPreferences = await storage.updateUserPreferences(req.user.id, preferencesUpdate);
+      res.json(updatedPreferences);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Landlord Criteria API
+  app.get("/api/landlord-criteria/:propertyId", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const propertyId = parseInt(req.params.propertyId, 10);
+      const criteria = await storage.getLandlordCriteria(propertyId);
+      
+      if (!criteria) {
+        return res.status(404).json({ message: "Landlord criteria not found for this property" });
+      }
+      
+      res.json(criteria);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/landlord-criteria", ensureLandlord, async (req, res, next) => {
+    try {
+      const criteriaData = insertLandlordCriteriaSchema.parse(req.body);
+      
+      // Check if property exists and belongs to landlord
+      const property = await storage.getProperty(criteriaData.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      if (property.landlordId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden: You don't own this property" });
+      }
+      
+      // Check if criteria already exists
+      const existingCriteria = await storage.getLandlordCriteria(criteriaData.propertyId);
+      if (existingCriteria) {
+        return res.status(400).json({ message: "Criteria already exist for this property. Use PUT to update." });
+      }
+      
+      const criteria = await storage.createLandlordCriteria(criteriaData);
+      res.status(201).json(criteria);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      next(error);
+    }
+  });
+
+  app.put("/api/landlord-criteria/:propertyId", ensureLandlord, async (req, res, next) => {
+    try {
+      const propertyId = parseInt(req.params.propertyId, 10);
+      
+      // Check if property exists and belongs to landlord
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      if (property.landlordId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden: You don't own this property" });
+      }
+      
+      // Check if criteria exist
+      const criteria = await storage.getLandlordCriteria(propertyId);
+      if (!criteria) {
+        return res.status(404).json({ message: "Landlord criteria not found. Use POST to create." });
+      }
+      
+      const criteriaUpdate = req.body;
+      const updatedCriteria = await storage.updateLandlordCriteria(propertyId, criteriaUpdate);
+      res.json(updatedCriteria);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Roommate API
+  app.post("/api/generate-roommate-code", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const code = await storage.generateRoommateCode(req.user.id);
+      res.json({ code });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/link-roommate", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const { roommateCode } = req.body;
+      
+      if (!roommateCode) {
+        return res.status(400).json({ message: "Roommate code is required" });
+      }
+      
+      try {
+        const linked = await storage.linkRoommate(req.user.id, roommateCode);
+        if (linked) {
+          res.json({ success: true, message: "Roommate linked successfully" });
+        } else {
+          res.status(400).json({ message: "Failed to link roommate" });
+        }
+      } catch (error) {
+        res.status(400).json({ message: error.message });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/roommates", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const roommates = await storage.getRoommates(req.user.id);
+      res.json(roommates);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Pre-Approval API
+  app.get("/api/qualify/:propertyId", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const propertyId = parseInt(req.params.propertyId, 10);
+      
+      // Check if property exists
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      // Check qualification
+      const qualification = await storage.checkRenterQualification(req.user.id, propertyId);
+      res.json(qualification);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
