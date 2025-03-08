@@ -15,6 +15,7 @@ import PortalPage from "@/pages/portal-page";
 import PaymentsPage from "@/pages/payments-page";
 import AccountPage from "@/pages/account-page";
 import OnboardingPage from "@/pages/onboarding-page";
+import RoommatesPage from "@/pages/roommates-page";
 import LeasingPage from "@/pages/landlord/leasing-page";
 import BuildingOverviewPage from "@/pages/landlord/building-overview";
 import HomePage from "@/pages/home-page";
@@ -38,6 +39,7 @@ function Router() {
       <ProtectedRoute path="/portal" component={PortalPage} />
       <ProtectedRoute path="/payments" component={PaymentsPage} />
       <ProtectedRoute path="/account" component={AccountPage} />
+      <ProtectedRoute path="/roommates" component={RoommatesPage} />
       
       {/* Landlord Routes */}
       <ProtectedRoute path="/landlord/leasing" component={LeasingPage} />

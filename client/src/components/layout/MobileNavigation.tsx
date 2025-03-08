@@ -20,6 +20,7 @@ export default function MobileNavigation() {
         { href: "/feed", label: "Feed", icon: "dynamic_feed" },
         { href: "/tools", label: "Tools", icon: "view_list" },
         { href: "/neighborhood", label: "Area", icon: "location_city" },
+        { href: "/roommates", label: "Roommates", icon: "people" },
         { href: "/messages", label: "Messages", icon: "chat" },
       ];
 
