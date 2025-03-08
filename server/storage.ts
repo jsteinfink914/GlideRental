@@ -1,7 +1,8 @@
-import { users, properties, buildings, messages, savedProperties, maintenanceRequests, payments } from "@shared/schema";
-import type { User, InsertUser, Property, InsertProperty, Building, InsertBuilding, Message, InsertMessage, SavedProperty, InsertSavedProperty, MaintenanceRequest, InsertMaintenanceRequest, Payment, InsertPayment } from "@shared/schema";
+import { users, properties, buildings, messages, savedProperties, maintenanceRequests, payments, userPreferences, landlordCriteria } from "@shared/schema";
+import type { User, InsertUser, Property, InsertProperty, Building, InsertBuilding, Message, InsertMessage, SavedProperty, InsertSavedProperty, MaintenanceRequest, InsertMaintenanceRequest, Payment, InsertPayment, UserPreferences, InsertUserPreferences, LandlordCriteria, InsertLandlordCriteria } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import crypto from "crypto";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -13,6 +14,14 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
+  generateRoommateCode(userId: number): Promise<string>;
+  linkRoommate(userId: number, roommateCode: string): Promise<boolean>;
+  getRoommates(userId: number): Promise<User[]>;
+  
+  // User Preferences operations
+  getUserPreferences(userId: number): Promise<UserPreferences | undefined>;
+  createUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+  updateUserPreferences(userId: number, preferences: Partial<UserPreferences>): Promise<UserPreferences | undefined>;
   
   // Property operations
   getProperty(id: number): Promise<Property | undefined>;
@@ -27,6 +36,12 @@ export interface IStorage {
   getLandlordBuildings(landlordId: number): Promise<Building[]>;
   createBuilding(building: InsertBuilding): Promise<Building>;
   updateBuilding(id: number, building: Partial<Building>): Promise<Building | undefined>;
+  
+  // Landlord Criteria operations
+  getLandlordCriteria(propertyId: number): Promise<LandlordCriteria | undefined>;
+  createLandlordCriteria(criteria: InsertLandlordCriteria): Promise<LandlordCriteria>;
+  updateLandlordCriteria(propertyId: number, criteria: Partial<LandlordCriteria>): Promise<LandlordCriteria | undefined>;
+  checkRenterQualification(userId: number, propertyId: number): Promise<{qualified: boolean, reasons?: string[]}>;
   
   // Message operations
   getMessage(id: number): Promise<Message | undefined>;
@@ -66,6 +81,8 @@ export class MemStorage implements IStorage {
   private savedProperties: Map<number, SavedProperty>;
   private maintenanceRequests: Map<number, MaintenanceRequest>;
   private payments: Map<number, Payment>;
+  private userPreferences: Map<number, UserPreferences>;
+  private landlordCriteria: Map<number, LandlordCriteria>;
   sessionStore: session.Store;
   
   // ID counters
@@ -76,6 +93,8 @@ export class MemStorage implements IStorage {
   private savedPropertyId: number;
   private maintenanceRequestId: number;
   private paymentId: number;
+  private userPreferencesId: number;
+  private landlordCriteriaId: number;
 
   constructor() {
     this.users = new Map();
@@ -85,6 +104,8 @@ export class MemStorage implements IStorage {
     this.savedProperties = new Map();
     this.maintenanceRequests = new Map();
     this.payments = new Map();
+    this.userPreferences = new Map();
+    this.landlordCriteria = new Map();
     
     this.userId = 1;
     this.propertyId = 1;
@@ -93,6 +114,8 @@ export class MemStorage implements IStorage {
     this.savedPropertyId = 1;
     this.maintenanceRequestId = 1;
     this.paymentId = 1;
+    this.userPreferencesId = 1;
+    this.landlordCriteriaId = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
@@ -135,6 +158,65 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...userUpdate };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+  
+  async generateRoommateCode(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Generate a random 6 character code
+    const code = crypto.randomBytes(3).toString('hex');
+    
+    // Update the user with the new roommate code
+    const updatedUser = await this.updateUser(userId, { roommateCode: code });
+    if (!updatedUser) throw new Error("Failed to update user");
+    
+    return code;
+  }
+  
+  async linkRoommate(userId: number, roommateCode: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Find the user with this roommate code
+    const roommate = Array.from(this.users.values()).find(
+      u => u.roommateCode === roommateCode && u.id !== userId
+    );
+    
+    if (!roommate) throw new Error("Invalid roommate code");
+    
+    // Update both users to include each other's IDs in their roommates array
+    const userRoommates = user.roommates || [];
+    if (!userRoommates.includes(roommate.id)) {
+      await this.updateUser(userId, { 
+        roommates: [...userRoommates, roommate.id]
+      });
+    }
+    
+    const roommateRoommates = roommate.roommates || [];
+    if (!roommateRoommates.includes(userId)) {
+      await this.updateUser(roommate.id, { 
+        roommates: [...roommateRoommates, userId]
+      });
+    }
+    
+    return true;
+  }
+  
+  async getRoommates(userId: number): Promise<User[]> {
+    const user = await this.getUser(userId);
+    if (!user) return [];
+    
+    if (!user.roommates || user.roommates.length === 0) {
+      return [];
+    }
+    
+    // Get all roommate users
+    const roommates = user.roommates
+      .map(id => this.users.get(id))
+      .filter(Boolean) as User[];
+      
+    return roommates;
   }
 
   // Property methods

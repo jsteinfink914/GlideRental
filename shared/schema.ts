@@ -13,6 +13,9 @@ export const users = pgTable("users", {
   userType: text("user_type").notNull().default("renter"), // "renter" or "landlord"
   phoneNumber: text("phone_number"),
   profileImage: text("profile_image"),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  roommateCode: text("roommate_code"),
+  roommates: json("roommates").$type<number[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -172,3 +175,63 @@ export type MaintenanceRequest = typeof maintenanceRequests.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
+
+// User Preferences schema
+export const userPreferences = pgTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  budget: json("budget").$type<{min: number, max: number}>().notNull(),
+  moveInDate: date("move_in_date").notNull(),
+  neighborhoodPreferences: text("neighborhood_preferences").array(),
+  bedroomsMin: integer("bedrooms_min").notNull(),
+  bedroomsMax: integer("bedrooms_max").notNull(),
+  bathroomsMin: real("bathrooms_min").notNull(),
+  propertyTypes: text("property_types").array(),
+  amenities: text("amenities").array(),
+  petFriendly: boolean("pet_friendly").default(false),
+  lifestyle: json("lifestyle").$type<{
+    noiseLevel: string, // quiet, moderate, lively
+    cleanliness: string, // very clean, generally clean, relaxed
+    guestPreference: string, // rarely, occasionally, frequently
+    workSchedule: string, // daytime, nighttime, varies
+    personality: string, // introverted, extroverted, mixed
+  }>(),
+  dealBreakers: text("deal_breakers").array(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Landlord Renter Criteria schema
+export const landlordCriteria = pgTable("landlord_criteria", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull().unique(),
+  minIncome: integer("min_income"),
+  creditScoreMin: integer("credit_score_min"),
+  requiresBackgroundCheck: boolean("requires_background_check").default(true),
+  petsAllowed: boolean("pets_allowed").default(false),
+  smokingAllowed: boolean("smoking_allowed").default(false),
+  leaseLength: integer("lease_length").notNull(), // in months
+  requiredDocuments: text("required_documents").array(),
+  additionalRequirements: text("additional_requirements"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertLandlordCriteriaSchema = createInsertSchema(landlordCriteria).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Additional type exports
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+
+export type InsertLandlordCriteria = z.infer<typeof insertLandlordCriteriaSchema>;
+export type LandlordCriteria = typeof landlordCriteria.$inferSelect;
