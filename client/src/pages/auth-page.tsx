@@ -54,7 +54,12 @@ export default function AuthPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate("/");
+      // If user is new and hasn't completed onboarding, direct to onboarding
+      if (!user.onboardingCompleted) {
+        navigate("/onboarding");
+      } else {
+        navigate("/");
+      }
     }
   }, [user, navigate]);
 

@@ -14,6 +14,7 @@ import MessagesPage from "@/pages/messages-page";
 import PortalPage from "@/pages/portal-page";
 import PaymentsPage from "@/pages/payments-page";
 import AccountPage from "@/pages/account-page";
+import OnboardingPage from "@/pages/onboarding-page";
 import LeasingPage from "@/pages/landlord/leasing-page";
 import BuildingOverviewPage from "@/pages/landlord/building-overview";
 import HomePage from "@/pages/home-page";
@@ -23,6 +24,9 @@ function Router() {
     <Switch>
       {/* Auth Route (public) */}
       <Route path="/auth" component={AuthPage} />
+      
+      {/* Onboarding */}
+      <Route path="/onboarding" component={OnboardingPage} />
       
       {/* Protected Routes */}
       <ProtectedRoute path="/" component={HomePage} />
