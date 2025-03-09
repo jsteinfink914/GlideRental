@@ -37,18 +37,23 @@ const onboardingSchema = insertUserPreferencesSchema.extend({
   bedroomsMin: z.number().min(0, "Minimum bedrooms must be at least 0"),
   bedroomsMax: z.number().min(0, "Maximum bedrooms must be at least 0"),
   bathroomsMin: z.number().min(0, "Minimum bathrooms must be at least 0"),
-  neighborhoodPreferences: z.array(z.string()).optional(),
-  propertyTypes: z.array(z.string()).optional(),
-  amenities: z.array(z.string()).optional(),
-  hasPets: z.boolean().optional(),
-  isSmoker: z.boolean().optional(),
-  income: z.number().optional(),
-  creditScore: z.number().min(300, "Credit score must be at least 300").max(850, "Credit score cannot exceed 850").optional(),
-  isEmployed: z.boolean().optional(),
-  employmentVerified: z.boolean().optional(),
-  hasRentalHistory: z.boolean().optional(),
-  rentalHistoryVerified: z.boolean().optional(),
-  dealBreakers: z.array(z.string()).optional(),
+  neighborhoodPreferences: z.array(z.string()).default([]),
+  propertyTypes: z.array(z.string()).default([]),
+  amenities: z.array(z.string()).default([]),
+  hasPets: z.boolean().default(false),
+  isSmoker: z.boolean().default(false),
+  income: z.union([z.number(), z.undefined()]).optional(),
+  creditScore: z.union([
+    z.number().min(300, "Credit score must be at least 300").max(850, "Credit score cannot exceed 850"),
+    z.undefined()
+  ]).optional(),
+  isEmployed: z.boolean().default(false),
+  employmentVerified: z.boolean().default(false),
+  hasRentalHistory: z.boolean().default(false),
+  rentalHistoryVerified: z.boolean().default(false),
+  dealBreakers: z.array(z.string()).default([]),
+  // Make lifestyle optional for now
+  lifestyle: z.any().optional(),
 });
 
 type OnboardingFormValues = z.infer<typeof onboardingSchema>;
@@ -115,8 +120,8 @@ const OnboardingForm = () => {
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues,
-    mode: "onSubmit",
-    reValidateMode: "onSubmit"
+    mode: "all", // Validate all fields on change, blur and submit
+    reValidateMode: "onChange" // Re-validate on every change
   });
 
   const [location, setLocation] = useLocation();
@@ -158,7 +163,27 @@ const OnboardingForm = () => {
 
   const onSubmit = (data: OnboardingFormValues) => {
     console.log("Form submitted with data:", data);
-    console.log("Form errors:", form.formState.errors);
+    
+    // Check for validation errors on the final step
+    if (step === 3) {
+      const errors = form.formState.errors;
+      console.log("Form errors:", errors);
+      
+      // If there are errors, show them in a toast
+      if (Object.keys(errors).length > 0) {
+        const errorList = Object.entries(errors)
+          .map(([field, error]) => `${field}: ${error.message}`)
+          .join(', ');
+        
+        toast({
+          title: "Please fix the following errors",
+          description: errorList,
+          variant: "destructive"
+        });
+        
+        return;
+      }
+    }
     
     if (step < 3) {
       // Move to next step regardless of validation errors
