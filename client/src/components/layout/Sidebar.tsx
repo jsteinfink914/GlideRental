@@ -22,7 +22,6 @@ export default function Sidebar() {
         { href: "/neighborhood", label: "Neighborhood", icon: "location_on" },
         { href: "/portal", label: "Home", icon: "home" },
         { href: "/messages", label: "Messages", icon: "chat" },
-        { href: "/account", label: "Account", icon: "person" },
       ];
       
   const handleLogout = () => {

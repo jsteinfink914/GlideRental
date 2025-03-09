@@ -21,7 +21,6 @@ export default function MobileNavigation() {
         { href: "/neighborhood", label: "Nearby", icon: "location_on" },
         { href: "/portal", label: "Home", icon: "home" },
         { href: "/messages", label: "Chat", icon: "chat" },
-        { href: "/account", label: "Account", icon: "person" },
       ];
 
   return (
@@ -29,11 +28,11 @@ export default function MobileNavigation() {
       <div className="flex justify-around items-center">
         {navLinks.map((link) => (
           <Link key={link.href} href={link.href}>
-            <div className={`flex flex-col items-center px-2 py-2 ${
+            <div className={`flex flex-col items-center px-3 py-2 ${
               location === link.href ? "text-primary" : "text-text-medium"
             }`}>
-              <span className="material-icons text-sm">{link.icon}</span>
-              <span className="text-xs mt-0.5">{link.label}</span>
+              <span className="material-icons">{link.icon}</span>
+              <span className="text-xs mt-1">{link.label}</span>
             </div>
           </Link>
         ))}
