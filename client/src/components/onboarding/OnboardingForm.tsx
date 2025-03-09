@@ -113,7 +113,7 @@ const OnboardingForm = () => {
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues,
-    mode: "onChange"
+    mode: "onSubmit"
   });
 
   const onboardingMutation = useMutation({
@@ -139,6 +139,9 @@ const OnboardingForm = () => {
   });
 
   const onSubmit = (data: OnboardingFormValues) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", form.formState.errors);
+    
     if (step < 3) {
       setStep(step + 1);
       return;
@@ -648,7 +651,14 @@ const OnboardingForm = () => {
         </div>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              console.log('Form submitted');
+              form.handleSubmit(onSubmit)(e);
+            }} 
+            className="space-y-6"
+          >
             {step === 1 && <PropertyDetailsForm />}
             {step === 2 && <NeighborhoodAndAmenitiesForm />}
             {step === 3 && <QualificationForm />}
@@ -664,7 +674,13 @@ const OnboardingForm = () => {
           Back
         </Button>
         <Button 
-          onClick={form.handleSubmit(onSubmit)}
+          type="button"
+          onClick={() => {
+            console.log('Button clicked');
+            // Use handleSubmit manually
+            const submitHandler = form.handleSubmit(onSubmit);
+            submitHandler();
+          }}
           disabled={onboardingMutation.isPending}
         >
           {onboardingMutation.isPending ? (
