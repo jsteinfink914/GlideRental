@@ -42,11 +42,8 @@ function Router() {
       <Route path="/onboarding" component={OnboardingPage} />
       
       {/* Protected Routes */}
-      <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/" component={PortalPage} />
       <ProtectedRoute path="/search" component={SearchPage} />
-      <ProtectedRoute path="/for-you" component={FeedPage} />
-      <ProtectedRoute path="/tools" component={ToolsPage} />
-      <ProtectedRoute path="/saved" component={SavedPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/portal" component={PortalPage} />
       <ProtectedRoute path="/payments" component={PaymentsPage} />
@@ -57,17 +54,26 @@ function Router() {
       <ProtectedRoute path="/landlord/buildings" component={BuildingOverviewPage} />
       
       {/* Legacy Routes - Redirect to new pages */}
+      <Route path="/for-you">
+        <RedirectTo to="/portal" />
+      </Route>
+      <Route path="/tools">
+        <RedirectTo to="/search" />
+      </Route>
+      <Route path="/saved">
+        <RedirectTo to="/search" />
+      </Route>
       <Route path="/feed">
-        <RedirectTo to="/for-you" />
+        <RedirectTo to="/portal" />
       </Route>
       <Route path="/search-tools">
-        <RedirectTo to="/tools" />
+        <RedirectTo to="/search" />
       </Route>
       <Route path="/neighborhood">
         <RedirectTo to="/search" />
       </Route>
       <Route path="/roommates">
-        <RedirectTo to="/saved" />
+        <RedirectTo to="/portal" />
       </Route>
       
       {/* Fallback to 404 */}

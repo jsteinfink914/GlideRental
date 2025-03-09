@@ -30,11 +30,9 @@ export default function Navigation() {
       ]
     : [
         { href: "/search", label: "Search", icon: "search" },
-        { href: "/for-you", label: "For You", icon: "recommend" },
-        { href: "/saved", label: "Saved", icon: "bookmarks" },
-        { href: "/search-tools", label: "Tools", icon: "view_list" },
+        { href: "/portal", label: "Home", icon: "home" },
         { href: "/messages", label: "Messages", icon: "chat" },
-        { href: "/portal", label: "Portal", icon: "home" },
+        { href: "/account", label: "Account", icon: "person" },
       ];
 
   return (
