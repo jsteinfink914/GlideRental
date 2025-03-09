@@ -59,6 +59,81 @@ async function processLocationQuery(
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   setupAuth(app);
+  
+  // Properties endpoints
+  app.get("/api/properties", async (req, res) => {
+    try {
+      const properties = await storage.getProperties();
+      res.json(properties);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching properties" });
+    }
+  });
+  
+  app.get("/api/properties/:id", async (req, res) => {
+    try {
+      const property = await storage.getProperty(parseInt(req.params.id));
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      res.json(property);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching property" });
+    }
+  });
+  
+  // Saved properties endpoints
+  app.get("/api/saved-properties", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const savedProperties = await storage.getUserSavedProperties(req.user.id);
+      const result = await Promise.all(
+        savedProperties.map(async (saved) => {
+          const property = await storage.getProperty(saved.propertyId);
+          return { savedId: saved.id, property };
+        })
+      );
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching saved properties" });
+    }
+  });
+  
+  app.post("/api/saved-properties", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const savedProperty = await storage.createSavedProperty({
+        userId: req.user.id,
+        propertyId: req.body.propertyId,
+        notes: req.body.notes || ""
+      });
+      res.status(201).json(savedProperty);
+    } catch (error) {
+      res.status(500).json({ message: "Error saving property" });
+    }
+  });
+  
+  app.delete("/api/saved-properties/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const success = await storage.deleteSavedProperty(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Saved property not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting saved property" });
+    }
+  });
 
   // Maps API key route
   app.get("/api/maps-key", (req, res) => {
