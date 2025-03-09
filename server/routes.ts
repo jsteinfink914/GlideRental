@@ -123,6 +123,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User preferences endpoint
+  app.get("/api/user/preferences", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      const userPreferences = await storage.getUserPreferences(userId);
+      
+      if (!userPreferences) {
+        return res.json({ gym: "", grocery: "", poiTypes: [] });
+      }
+      
+      res.json(userPreferences);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user preferences" });
+    }
+  });
+  
+  app.post("/api/user/preferences", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      const { gym, grocery, poiTypes } = req.body;
+      
+      const existingPreferences = await storage.getUserPreferences(userId);
+      
+      let preferences;
+      if (existingPreferences) {
+        preferences = await storage.updateUserPreferences(userId, {
+          ...req.body,
+          userId
+        });
+      } else {
+        preferences = await storage.createUserPreferences({
+          userId,
+          gym,
+          grocery,
+          poiTypes
+        });
+      }
+      
+      res.json(preferences);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save user preferences" });
+    }
+  });
+  
   // Create HTTP server
   const httpServer = createServer(app);
   

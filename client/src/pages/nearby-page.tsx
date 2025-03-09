@@ -165,18 +165,24 @@ export default function NearbyPage() {
     
     const updatedListings: ListingWithPOIs[] = [];
     
+    // Get random coordinate offset utility (same as in propertyToListing)
+    const getRandomCoord = (base: number, range: number) => base + (Math.random() * range - range/2);
+    
     // Process each property
     for (const property of properties) {
-      if (!property.latitude || !property.longitude) continue;
-      
+      // Use propertyToListing to get consistent coordinates
       const listing = propertyToListing(property);
+      
+      // Mock latitude/longitude for API calls
+      const lat = listing.lat;
+      const lng = listing.lon;
       
       // Fetch nearest gym if requested
       if (gymName) {
         try {
           const gymResult = await fetchNearbyPlacesMutation.mutateAsync({
-            lat: property.latitude,
-            lng: property.longitude,
+            lat,
+            lng,
             type: 'gym',
             name: gymName
           });
@@ -200,8 +206,8 @@ export default function NearbyPage() {
       if (groceryName) {
         try {
           const groceryResult = await fetchNearbyPlacesMutation.mutateAsync({
-            lat: property.latitude,
-            lng: property.longitude,
+            lat,
+            lng,
             type: 'grocery',
             name: groceryName
           });
@@ -228,8 +234,8 @@ export default function NearbyPage() {
         for (const poiType of selectedPoiTypes) {
           try {
             const poiResult = await fetchNearbyPlacesMutation.mutateAsync({
-              lat: property.latitude,
-              lng: property.longitude,
+              lat,
+              lng,
               type: poiType.toLowerCase()
             });
             
