@@ -45,7 +45,7 @@ function Router() {
       
       {/* Protected Routes */}
       <ProtectedRoute path="/" component={PortalPage} />
-      <ProtectedRoute path="/search" component={SearchPage} />
+      <Route path="/search" component={SearchPage} />  {/* Public search page */}
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/portal" component={PortalPage} />
       <ProtectedRoute path="/payments" component={PaymentsPage} />

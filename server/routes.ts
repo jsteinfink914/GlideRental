@@ -60,12 +60,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   setupAuth(app);
   
-  // Properties endpoints
+  // Properties endpoints - No authentication required to view properties
   app.get("/api/properties", async (req, res) => {
     try {
+      console.log("Fetching properties");
       const properties = await storage.getProperties();
+      console.log(`Returning ${properties.length} properties`);
       res.json(properties);
     } catch (error) {
+      console.error("Error fetching properties:", error);
       res.status(500).json({ message: "Error fetching properties" });
     }
   });
@@ -110,8 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const savedProperty = await storage.createSavedProperty({
         userId: req.user.id,
-        propertyId: req.body.propertyId,
-        notes: req.body.notes || ""
+        propertyId: req.body.propertyId
       });
       res.status(201).json(savedProperty);
     } catch (error) {
