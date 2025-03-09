@@ -91,6 +91,7 @@ const AMENITIES = [
 const OnboardingForm = () => {
   const [step, setStep] = useState(1);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const defaultValues: Partial<OnboardingFormValues> = {
@@ -121,18 +122,29 @@ const OnboardingForm = () => {
   const [location, setLocation] = useLocation();
   const onboardingMutation = useMutation({
     mutationFn: async (data: OnboardingFormValues) => {
-      const res = await apiRequest("POST", "/api/user-preferences", data);
-      return res.json();
+      console.log("Making POST request to /api/user-preferences with data:", data);
+      try {
+        const res = await apiRequest("POST", "/api/user-preferences", data);
+        const responseData = await res.json();
+        console.log("Response from server:", responseData);
+        return responseData;
+      } catch (error) {
+        console.error("API request failed:", error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Mutation succeeded with data:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Profile completed!",
         description: "Your preferences have been saved.",
         variant: "default"
       });
-      // Redirect to home page after successful submission
-      setLocation("/");
+      
+      // Important: Force navigation to the homepage
+      console.log("Redirecting to home page...");
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
@@ -154,8 +166,26 @@ const OnboardingForm = () => {
       return;
     }
     
+    if (!user) {
+      toast({
+        title: "Authentication error",
+        description: "You must be logged in to complete onboarding",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Add userId to the form data
+    const completeData = {
+      ...data,
+      userId: user.id
+    };
+    
+    // Log the final data for debugging
+    console.log("Final submission data:", completeData);
+    
     // Final submission
-    onboardingMutation.mutate(data);
+    onboardingMutation.mutate(completeData);
   };
 
   const goToPreviousStep = () => {
@@ -689,8 +719,9 @@ const OnboardingForm = () => {
               setStep(step + 1);
             } else {
               // For final submission, do full validation
-              const submitHandler = form.handleSubmit(onSubmit);
-              submitHandler();
+              console.log("Final step submission!");
+              // Use the existing form submission handler which includes validation
+              form.handleSubmit(onSubmit)();
             }
           }}
           disabled={onboardingMutation.isPending}
