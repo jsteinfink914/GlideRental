@@ -218,7 +218,7 @@ const OnboardingForm = () => {
                     min={0}
                     step={100}
                     value={field.value}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseInt(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -237,7 +237,7 @@ const OnboardingForm = () => {
                     min={0}
                     step={100}
                     value={field.value}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseInt(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -261,7 +261,7 @@ const OnboardingForm = () => {
                     min={0}
                     step={1}
                     value={field.value}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseInt(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -280,7 +280,7 @@ const OnboardingForm = () => {
                     min={0}
                     step={1}
                     value={field.value}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseInt(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -302,7 +302,7 @@ const OnboardingForm = () => {
                 min={0}
                 step={0.5}
                 value={field.value}
-                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseFloat(e.target.value))}
               />
             </FormControl>
             <FormMessage />
