@@ -16,6 +16,29 @@ export const users = pgTable("users", {
   onboardingCompleted: boolean("onboarding_completed").default(false),
   roommateCode: text("roommate_code"),
   roommates: json("roommates").$type<number[]>(),
+  documentsUploaded: json("documents_uploaded").$type<{
+    w2?: string | null,
+    bankStatements?: string | null,
+    payStubs?: string | null,
+    identificationDocument?: string | null,
+    proofOfInsurance?: string | null,
+    employmentVerification?: string | null,
+    creditReport?: string | null,
+    rentalHistory?: string | null,
+    references?: string | null,
+    additionalDocuments?: string[] | null
+  }>().default({} as any),
+  documentVerificationStatus: json("document_verification_status").$type<{
+    w2?: boolean,
+    bankStatements?: boolean,
+    payStubs?: boolean,
+    identificationDocument?: boolean,
+    proofOfInsurance?: boolean,
+    employmentVerification?: boolean,
+    creditReport?: boolean,
+    rentalHistory?: boolean,
+    references?: boolean
+  }>().default({} as any),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -237,9 +260,45 @@ export const insertLandlordCriteriaSchema = createInsertSchema(landlordCriteria)
   updatedAt: true,
 });
 
+// Rental Application schema
+export const rentalApplications = pgTable("rental_applications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  propertyId: integer("property_id").notNull(),
+  landlordId: integer("landlord_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, denied, withdrawn
+  submittedDocuments: json("submitted_documents").$type<{
+    w2?: boolean,
+    bankStatements?: boolean,
+    payStubs?: boolean,
+    identificationDocument?: boolean,
+    proofOfInsurance?: boolean,
+    employmentVerification?: boolean,
+    creditReport?: boolean,
+    rentalHistory?: boolean,
+    references?: boolean,
+    additionalDocuments?: string[]
+  }>().default({} as any),
+  message: text("message"),
+  landlordNotes: text("landlord_notes"),
+  moveInDate: date("move_in_date"),
+  isQuickApplication: boolean("is_quick_application").default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertRentalApplicationSchema = createInsertSchema(rentalApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Additional type exports
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 
 export type InsertLandlordCriteria = z.infer<typeof insertLandlordCriteriaSchema>;
 export type LandlordCriteria = typeof landlordCriteria.$inferSelect;
+
+export type InsertRentalApplication = z.infer<typeof insertRentalApplicationSchema>;
+export type RentalApplication = typeof rentalApplications.$inferSelect;

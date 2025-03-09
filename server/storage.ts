@@ -1,5 +1,5 @@
-import { users, properties, buildings, messages, savedProperties, maintenanceRequests, payments, userPreferences, landlordCriteria } from "@shared/schema";
-import type { User, InsertUser, Property, InsertProperty, Building, InsertBuilding, Message, InsertMessage, SavedProperty, InsertSavedProperty, MaintenanceRequest, InsertMaintenanceRequest, Payment, InsertPayment, UserPreferences, InsertUserPreferences, LandlordCriteria, InsertLandlordCriteria } from "@shared/schema";
+import { users, properties, buildings, messages, savedProperties, maintenanceRequests, payments, userPreferences, landlordCriteria, rentalApplications } from "@shared/schema";
+import type { User, InsertUser, Property, InsertProperty, Building, InsertBuilding, Message, InsertMessage, SavedProperty, InsertSavedProperty, MaintenanceRequest, InsertMaintenanceRequest, Payment, InsertPayment, UserPreferences, InsertUserPreferences, LandlordCriteria, InsertLandlordCriteria, RentalApplication, InsertRentalApplication } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import crypto from "crypto";
@@ -68,6 +68,20 @@ export interface IStorage {
   getPropertyPayments(propertyId: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<Payment>): Promise<Payment | undefined>;
+  
+  // Document operations
+  uploadUserDocument(userId: number, documentType: string, documentPath: string): Promise<Partial<User>>;
+  getUserDocuments(userId: number): Promise<Partial<User>>;
+  verifyUserDocument(userId: number, documentType: string): Promise<boolean>;
+  
+  // Rental Application operations
+  getRentalApplication(id: number): Promise<RentalApplication | undefined>;
+  getUserRentalApplications(userId: number): Promise<RentalApplication[]>;
+  getLandlordRentalApplications(landlordId: number): Promise<RentalApplication[]>;
+  getPropertyRentalApplications(propertyId: number): Promise<RentalApplication[]>;
+  createRentalApplication(application: InsertRentalApplication): Promise<RentalApplication>;
+  updateRentalApplication(id: number, application: Partial<RentalApplication>): Promise<RentalApplication | undefined>;
+  quickApply(userId: number, propertyId: number, message?: string): Promise<RentalApplication | undefined>;
   
   // Session store
   sessionStore: session.Store;
