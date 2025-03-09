@@ -12,13 +12,9 @@ export default function HomePage() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    // Redirect to appropriate page based on user type and onboarding status
+    // Redirect to appropriate page based on user type
     if (user) {
-      if (!user.onboardingCompleted) {
-        navigate("/onboarding");
-        return;
-      }
-      
+      // Bypass onboarding for now and go directly to main pages
       if (user.userType === "renter") {
         navigate("/search");
       } else if (user.userType === "landlord") {
