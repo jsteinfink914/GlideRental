@@ -32,7 +32,7 @@ export default function SearchPage() {
   }, [filters]);
 
   // Fetch properties
-  const { data: properties, isLoading: isLoadingProperties } = useQuery({
+  const { data: properties, isLoading: isLoadingProperties } = useQuery<Property[]>({
     queryKey: ['/api/properties', filters],
     queryFn: async () => {
       // Convert filters to query parameters
@@ -63,7 +63,7 @@ export default function SearchPage() {
   });
 
   // Fetch saved properties
-  const { data: savedProperties } = useQuery({
+  const { data: savedProperties } = useQuery<{savedId: number; property: Property}[]>({
     queryKey: ['/api/saved-properties'],
     enabled: !!user
   });

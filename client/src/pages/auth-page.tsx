@@ -54,12 +54,8 @@ export default function AuthPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      // If user is new and hasn't completed onboarding, direct to onboarding
-      if (!user.onboardingCompleted) {
-        navigate("/onboarding");
-      } else {
-        navigate("/");
-      }
+      // Always go to search page, skipping onboarding
+      navigate("/search");
     }
   }, [user, navigate]);
 
@@ -87,11 +83,21 @@ export default function AuthPage() {
   });
 
   const onLoginSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate(values);
+    loginMutation.mutate(values, {
+      onSuccess: () => {
+        // Go directly to search page
+        window.location.href = "/search";
+      }
+    });
   };
 
   const onRegisterSubmit = (values: RegisterFormValues) => {
-    registerMutation.mutate(values as InsertUser);
+    registerMutation.mutate(values as InsertUser, {
+      onSuccess: () => {
+        // Skip onboarding and go directly to search page
+        window.location.href = "/search";
+      }
+    });
   };
 
   return (
