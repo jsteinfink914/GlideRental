@@ -17,10 +17,9 @@ export default function MobileNavigation() {
       ]
     : [
         { href: "/search", label: "Search", icon: "search" },
-        { href: "/feed", label: "Feed", icon: "dynamic_feed" },
-        { href: "/tools", label: "Tools", icon: "view_list" },
-        { href: "/neighborhood", label: "Area", icon: "location_city" },
-        { href: "/roommates", label: "Roommates", icon: "people" },
+        { href: "/for-you", label: "For You", icon: "recommend" },
+        { href: "/saved", label: "Saved", icon: "bookmarks" },
+        { href: "/search-tools", label: "Tools", icon: "view_list" },
         { href: "/messages", label: "Messages", icon: "chat" },
       ];
 
