@@ -8,6 +8,17 @@ import { Loader2, FileText, Check, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the type for user document response
+interface UserDocuments {
+  id: number;
+  documentsUploaded: {
+    [key: string]: string | null;
+  };
+  documentVerificationStatus?: {
+    [key: string]: boolean;
+  };
+}
+
 interface DocumentUploadProps {
   documentType: string;
   label: string;
@@ -28,7 +39,7 @@ export default function DocumentUpload({
   const queryClient = useQueryClient();
 
   // Fetch user's documents
-  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery({
+  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery<UserDocuments>({
     queryKey: ["/api/documents"],
     staleTime: 1000 * 60 * 5 // 5 minutes
   });

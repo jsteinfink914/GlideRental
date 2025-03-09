@@ -10,6 +10,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RentalApplication } from "@shared/schema";
+
+// Define the type for user document response
+interface UserDocuments {
+  id: number;
+  documentsUploaded: {
+    [key: string]: string | null;
+  };
+  documentVerificationStatus?: {
+    [key: string]: boolean;
+  };
+}
 
 export default function DocumentsPage() {
   const { user, isLoading: isLoadingAuth } = useAuth();
@@ -23,12 +35,12 @@ export default function DocumentsPage() {
   }, [user, isLoadingAuth, setLocation]);
 
   // Fetch user's documents
-  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery({
+  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery<UserDocuments>({
     queryKey: ["/api/documents"],
   });
 
   // Fetch user's applications
-  const { data: applications, isLoading: isLoadingApplications } = useQuery({
+  const { data: applications, isLoading: isLoadingApplications } = useQuery<RentalApplication[]>({
     queryKey: ["/api/applications"],
   });
 
@@ -133,7 +145,7 @@ export default function DocumentsPage() {
             </Alert>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
-              {applications.map((application: any) => (
+              {applications?.map((application: RentalApplication) => (
                 <Card key={application.id}>
                   <CardHeader>
                     <CardTitle>Application #{application.id}</CardTitle>
@@ -146,14 +158,14 @@ export default function DocumentsPage() {
                         application.status === 'rejected' ? 'destructive' : 
                         'outline'
                       }>
-                        {application.status?.charAt(0).toUpperCase() + application.status?.slice(1) || 'Pending'}
+                        {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <h3 className="text-sm font-medium">Property</h3>
-                      <p>{application.propertyId}</p>
+                      <p>Property #{application.propertyId}</p>
                     </div>
                     
                     {application.message && (

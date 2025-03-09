@@ -4,6 +4,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, CheckCircle } from "lucide-react";
+import { LandlordCriteria } from "@shared/schema";
+
+// Define the type for user document response
+interface UserDocuments {
+  id: number;
+  documentsUploaded: {
+    [key: string]: string | null;
+  };
+  documentVerificationStatus?: {
+    [key: string]: boolean;
+  };
+}
 
 interface DocumentsManagerProps {
   requiredDocuments?: string[];
@@ -12,7 +24,7 @@ interface DocumentsManagerProps {
 
 export default function DocumentsManager({ requiredDocuments, propertyId }: DocumentsManagerProps) {
   // Fetch landlord criteria if propertyId is provided
-  const { data: criteria, isLoading: isLoadingCriteria } = useQuery({
+  const { data: criteria, isLoading: isLoadingCriteria } = useQuery<LandlordCriteria>({
     queryKey: ["/api/landlord-criteria", propertyId],
     enabled: !!propertyId,
   });
@@ -24,7 +36,7 @@ export default function DocumentsManager({ requiredDocuments, propertyId }: Docu
   ];
 
   // Fetch user documents
-  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery({
+  const { data: userDocuments, isLoading: isLoadingDocuments } = useQuery<UserDocuments>({
     queryKey: ["/api/documents"],
   });
 
