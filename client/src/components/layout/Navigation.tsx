@@ -41,16 +41,16 @@ export default function Navigation() {
         <div className="flex items-center">
           {/* Logo */}
           <Link href="/">
-            <a className="mr-4">
+            <div className="mr-4">
               <h1 className="text-primary font-heading font-bold text-2xl">Glide</h1>
-            </a>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-6">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href}>
-                <a
+                <div
                   className={`font-medium ${
                     location === link.href
                       ? "text-primary border-b-2 border-primary"
@@ -58,7 +58,7 @@ export default function Navigation() {
                   } transition px-2 py-1`}
                 >
                   {link.label}
-                </a>
+                </div>
               </Link>
             ))}
           </nav>
@@ -93,17 +93,17 @@ export default function Navigation() {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
                 <Link href="/account">
-                  <a className="w-full cursor-pointer">Your Profile</a>
+                  <div className="w-full cursor-pointer">Your Profile</div>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/account?tab=settings">
-                  <a className="w-full cursor-pointer">Settings</a>
+                  <div className="w-full cursor-pointer">Settings</div>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/account?tab=documents">
-                  <a className="w-full cursor-pointer">Documents</a>
+                  <div className="w-full cursor-pointer">Documents</div>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

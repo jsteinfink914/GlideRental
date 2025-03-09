@@ -32,23 +32,23 @@ export default function Sidebar() {
     <div className="hidden lg:flex flex-col bg-white border-r border-gray-200 w-64 min-h-screen p-4">
       <div className="mb-8">
         <Link href="/">
-          <a className="flex items-center">
+          <div className="flex items-center cursor-pointer">
             <h1 className="text-primary font-heading font-bold text-2xl">Glide</h1>
-          </a>
+          </div>
         </Link>
       </div>
       
       <nav className="flex-1 space-y-2">
         {navLinks.map((link) => (
           <Link key={link.href} href={link.href}>
-            <a className={`flex items-center px-4 py-3 rounded-lg ${
+            <div className={`flex items-center px-4 py-3 rounded-lg cursor-pointer ${
               location === link.href 
               ? "bg-secondary text-primary font-medium"
               : "text-text-medium hover:bg-gray-50"
             }`}>
               <span className="material-icons mr-3">{link.icon}</span>
               {link.label}
-            </a>
+            </div>
           </Link>
         ))}
       </nav>
