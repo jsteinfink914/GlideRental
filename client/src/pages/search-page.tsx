@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Property } from "@shared/schema";
 import Navigation from "@/components/layout/Navigation";
@@ -150,6 +151,34 @@ export default function SearchPage() {
               <p className="text-text-medium mt-2">
                 {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'} available
               </p>
+            </div>
+
+            {/* Content Tabs */}
+            <div className="flex mb-6 border-b border-gray-200">
+              <Link href="/search">
+                <div className="flex items-center px-6 py-3 font-medium text-primary border-b-2 border-primary cursor-pointer">
+                  <span className="material-icons mr-2">search</span>
+                  Search
+                </div>
+              </Link>
+              <Link href="/for-you">
+                <div className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary cursor-pointer">
+                  <span className="material-icons mr-2">recommend</span>
+                  For You
+                </div>
+              </Link>
+              <Link href="/saved">
+                <div className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary cursor-pointer">
+                  <span className="material-icons mr-2">bookmarks</span>
+                  Saved
+                </div>
+              </Link>
+              <Link href="/tools">
+                <div className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary cursor-pointer">
+                  <span className="material-icons mr-2">view_list</span>
+                  Tools
+                </div>
+              </Link>
             </div>
 
             {/* Search and Filter Bar */}
