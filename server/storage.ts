@@ -97,6 +97,7 @@ export class MemStorage implements IStorage {
   private payments: Map<number, Payment>;
   private userPreferences: Map<number, UserPreferences>;
   private landlordCriteria: Map<number, LandlordCriteria>;
+  private rentalApplications: Map<number, RentalApplication>;
   sessionStore: session.Store;
   
   // ID counters
@@ -109,6 +110,7 @@ export class MemStorage implements IStorage {
   private paymentId: number;
   private userPreferencesId: number;
   private landlordCriteriaId: number;
+  private rentalApplicationId: number;
 
   constructor() {
     this.users = new Map();
@@ -120,6 +122,7 @@ export class MemStorage implements IStorage {
     this.payments = new Map();
     this.userPreferences = new Map();
     this.landlordCriteria = new Map();
+    this.rentalApplications = new Map();
     
     this.userId = 1;
     this.propertyId = 1;
@@ -130,6 +133,7 @@ export class MemStorage implements IStorage {
     this.paymentId = 1;
     this.userPreferencesId = 1;
     this.landlordCriteriaId = 1;
+    this.rentalApplicationId = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
@@ -604,6 +608,171 @@ export class MemStorage implements IStorage {
     const updatedPayment = { ...payment, ...paymentUpdate };
     this.payments.set(id, updatedPayment);
     return updatedPayment;
+  }
+
+  // Document operations
+  async uploadUserDocument(userId: number, documentType: string, documentPath: string): Promise<Partial<User>> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Create a documents object if it doesn't exist
+    const documentsUploaded = user.documentsUploaded || {};
+    
+    // Update the document path for the specified type
+    const updatedDocuments = {
+      ...documentsUploaded,
+      [documentType]: documentPath
+    };
+    
+    // Update the user with the new document
+    const updatedUser = await this.updateUser(userId, {
+      documentsUploaded: updatedDocuments
+    });
+    
+    if (!updatedUser) throw new Error("Failed to update user");
+    
+    return {
+      id: updatedUser.id,
+      documentsUploaded: updatedUser.documentsUploaded
+    };
+  }
+  
+  async getUserDocuments(userId: number): Promise<Partial<User>> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    return {
+      id: user.id,
+      documentsUploaded: user.documentsUploaded || {}
+    };
+  }
+  
+  async verifyUserDocument(userId: number, documentType: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Get the current verification status
+    const verificationStatus = user.documentVerificationStatus || {};
+    
+    // Check if the document exists
+    const documents = user.documentsUploaded || {};
+    if (!documents[documentType]) {
+      throw new Error(`Document ${documentType} not found for user`);
+    }
+    
+    // Mark the document as verified
+    const updatedVerificationStatus = {
+      ...verificationStatus,
+      [documentType]: true
+    };
+    
+    // Update the user with the new verification status
+    const updatedUser = await this.updateUser(userId, {
+      documentVerificationStatus: updatedVerificationStatus
+    });
+    
+    if (!updatedUser) throw new Error("Failed to update user");
+    
+    return true;
+  }
+  
+  // Rental Application operations
+  async getRentalApplication(id: number): Promise<RentalApplication | undefined> {
+    return this.rentalApplications.get(id);
+  }
+  
+  async getUserRentalApplications(userId: number): Promise<RentalApplication[]> {
+    return Array.from(this.rentalApplications.values()).filter(
+      app => app.userId === userId
+    );
+  }
+  
+  async getLandlordRentalApplications(landlordId: number): Promise<RentalApplication[]> {
+    return Array.from(this.rentalApplications.values()).filter(
+      app => app.landlordId === landlordId
+    );
+  }
+  
+  async getPropertyRentalApplications(propertyId: number): Promise<RentalApplication[]> {
+    return Array.from(this.rentalApplications.values()).filter(
+      app => app.propertyId === propertyId
+    );
+  }
+  
+  async createRentalApplication(insertApplication: InsertRentalApplication): Promise<RentalApplication> {
+    const id = this.rentalApplicationId++;
+    const now = new Date();
+    const application: RentalApplication = {
+      ...insertApplication,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.rentalApplications.set(id, application);
+    return application;
+  }
+  
+  async updateRentalApplication(id: number, applicationUpdate: Partial<RentalApplication>): Promise<RentalApplication | undefined> {
+    const application = await this.getRentalApplication(id);
+    if (!application) return undefined;
+    
+    const now = new Date();
+    const updatedApplication = {
+      ...application,
+      ...applicationUpdate,
+      updatedAt: now
+    };
+    this.rentalApplications.set(id, updatedApplication);
+    return updatedApplication;
+  }
+  
+  async quickApply(userId: number, propertyId: number, message?: string): Promise<RentalApplication | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    const property = await this.getProperty(propertyId);
+    if (!property) throw new Error("Property not found");
+    
+    // Check if user has already applied to this property
+    const existingApplications = await this.getUserRentalApplications(userId);
+    const alreadyApplied = existingApplications.some(app => app.propertyId === propertyId);
+    if (alreadyApplied) {
+      throw new Error("You've already applied to this property");
+    }
+    
+    // Get landlord criteria for the property
+    const criteria = await this.getLandlordCriteria(propertyId);
+    if (!criteria) {
+      throw new Error("Landlord has not set application criteria for this property");
+    }
+    
+    // Check if user has uploaded all required documents
+    const userDocuments = user.documentsUploaded || {};
+    const requiredDocuments = criteria.requiredDocuments || [];
+    const missingDocuments = requiredDocuments.filter(doc => !userDocuments[doc]);
+    
+    if (missingDocuments.length > 0) {
+      throw new Error(`Missing required documents: ${missingDocuments.join(', ')}`);
+    }
+    
+    // Create a record of which documents were submitted
+    const submittedDocuments = requiredDocuments.reduce((docs, docType) => {
+      docs[docType] = true;
+      return docs;
+    }, {} as Record<string, boolean>);
+    
+    // Create the application
+    const application: InsertRentalApplication = {
+      userId,
+      propertyId,
+      landlordId: property.landlordId,
+      submittedDocuments: submittedDocuments as any,
+      message: message || `Quick application for ${property.title}`,
+      isQuickApplication: true,
+      moveInDate: property.availableDate
+    };
+    
+    return this.createRentalApplication(application);
   }
 }
 

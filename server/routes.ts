@@ -867,6 +867,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document Upload API
+  app.post("/api/documents/:documentType", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const { documentType } = req.params;
+      const { documentPath } = req.body;
+      
+      if (!documentType || !documentPath) {
+        return res.status(400).json({ message: "Document type and path are required" });
+      }
+      
+      const updatedUserDocs = await storage.uploadUserDocument(
+        req.user!.id, 
+        documentType, 
+        documentPath
+      );
+      
+      res.json(updatedUserDocs);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.get("/api/documents", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const userDocuments = await storage.getUserDocuments(req.user!.id);
+      res.json(userDocuments);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.post("/api/documents/:documentType/verify", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const { documentType } = req.params;
+      
+      // Only users with landlord or admin role can verify documents
+      if (req.user!.userType !== 'landlord' && req.user!.userType !== 'admin') {
+        return res.status(403).json({ message: "Only landlords and admins can verify documents" });
+      }
+      
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      
+      const verified = await storage.verifyUserDocument(userId, documentType);
+      res.json({ success: verified });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Rental Applications API
+  app.post("/api/applications", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const applicationData = req.body;
+      
+      // Ensure the user ID in the application matches the authenticated user
+      if (applicationData.userId && applicationData.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Cannot create application for another user" });
+      }
+      
+      // Set the user ID to the authenticated user
+      applicationData.userId = req.user!.id;
+      
+      const application = await storage.createRentalApplication(applicationData);
+      res.status(201).json(application);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.get("/api/applications", ensureAuthenticated, async (req, res, next) => {
+    try {
+      let applications = [];
+      
+      // If user is a landlord, get applications for their properties
+      if (req.user!.userType === 'landlord') {
+        applications = await storage.getLandlordRentalApplications(req.user!.id);
+      } else {
+        // If user is a tenant, get their applications
+        applications = await storage.getUserRentalApplications(req.user!.id);
+      }
+      
+      res.json(applications);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.get("/api/applications/:id", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const applicationId = parseInt(req.params.id, 10);
+      const application = await storage.getRentalApplication(applicationId);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Only allow users to view their own applications or landlords to view applications for their properties
+      if (application.userId !== req.user!.id && 
+          (req.user!.userType !== 'landlord' || application.landlordId !== req.user!.id)) {
+        return res.status(403).json({ message: "Not authorized to view this application" });
+      }
+      
+      res.json(application);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.patch("/api/applications/:id", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const applicationId = parseInt(req.params.id, 10);
+      const application = await storage.getRentalApplication(applicationId);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Only allow updates by the application owner or the landlord
+      if (application.userId !== req.user!.id && 
+          (req.user!.userType !== 'landlord' || application.landlordId !== req.user!.id)) {
+        return res.status(403).json({ message: "Not authorized to update this application" });
+      }
+      
+      const updateData = req.body;
+      const updatedApplication = await storage.updateRentalApplication(applicationId, updateData);
+      
+      res.json(updatedApplication);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.post("/api/quick-apply/:propertyId", ensureAuthenticated, async (req, res, next) => {
+    try {
+      const propertyId = parseInt(req.params.propertyId, 10);
+      const { message } = req.body;
+      
+      const application = await storage.quickApply(req.user!.id, propertyId, message);
+      res.status(201).json(application);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
   const httpServer = createServer(app);
 
   return httpServer;
