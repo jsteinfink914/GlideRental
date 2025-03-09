@@ -22,7 +22,7 @@ export default function ToolsPage() {
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
 
   // Fetch user's saved properties
-  const { data: savedProperties, isLoading } = useQuery({
+  const { data: savedProperties, isLoading } = useQuery<{savedId: number; property: Property}[]>({
     queryKey: ['/api/saved-properties'],
   });
 
@@ -40,8 +40,8 @@ export default function ToolsPage() {
 
   // Filter properties that are selected for comparison
   const propertiesForComparison = savedProperties
-    ?.filter(item => isPropertySelected(item.property.id))
-    .map(item => item.property) || [];
+    ?.filter((item: {savedId: number; property: Property}) => isPropertySelected(item.property.id))
+    .map((item: {savedId: number; property: Property}) => item.property) || [];
 
   // Function to render amenity check or cross
   const renderAmenityStatus = (property: Property, amenity: string) => {
@@ -73,6 +73,38 @@ export default function ToolsPage() {
 
         <main className="flex-1 lg:pl-64 pb-16 md:pb-0">
           <div className="container mx-auto px-4 py-6">
+            {/* Main Navigation Tabs */}
+            <div className="flex mb-6 border-b border-gray-200">
+              <a 
+                href="/search"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">search</span>
+                Search
+              </a>
+              <a 
+                href="/for-you"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">recommend</span>
+                For You
+              </a>
+              <a 
+                href="/saved"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">bookmarks</span>
+                Saved
+              </a>
+              <a 
+                href="/tools"
+                className="flex items-center px-6 py-3 font-medium text-primary border-b-2 border-primary"
+              >
+                <span className="material-icons mr-2">view_list</span>
+                Tools
+              </a>
+            </div>
+            
             {/* Page Title */}
             <div className="mb-6">
               <h1 className="text-3xl font-heading font-bold text-text-dark">Tools</h1>
@@ -126,7 +158,7 @@ export default function ToolsPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {savedProperties.map((item) => (
+                        {savedProperties.map((item: {savedId: number; property: Property}) => (
                           <div key={item.savedId} className="flex items-start border-b border-gray-100 pb-4">
                             <Checkbox
                               id={`property-${item.property.id}`}
@@ -166,7 +198,7 @@ export default function ToolsPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-1/4">Features</TableHead>
-                              {propertiesForComparison.map(property => (
+                              {propertiesForComparison.map((property: Property) => (
                                 <TableHead key={property.id}>
                                   {property.title}
                                 </TableHead>

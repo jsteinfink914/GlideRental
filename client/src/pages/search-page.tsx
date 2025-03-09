@@ -166,7 +166,7 @@ export default function SearchPage() {
                 Saved
               </a>
               <a 
-                href="/search-tools"
+                href="/tools"
                 className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
               >
                 <span className="material-icons mr-2">view_list</span>
