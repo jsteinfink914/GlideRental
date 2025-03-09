@@ -48,22 +48,16 @@ async function seedDatabase() {
       hasDishwasher: true,
       petFriendly: true,
       hasDoorman: true,
-      hasElevator: true,
-      hasParking: false,
-      hasAirConditioning: true,
-      hasOutdoorSpace: false,
       hasVirtualTour: true,
-      isAvailable: true,
       isPublished: true,
       noFee: false,
       availableDate: new Date().toISOString(),
-      mainImage: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
       images: [
         "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
         "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
         "https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
       ],
-      coordinates: { lat: 40.7459, lng: -73.9911 },
+      amenities: ["Dishwasher", "In-Unit Laundry", "Doorman", "Central AC"],
       landlordId: landlord.id
     },
     {
@@ -83,22 +77,16 @@ async function seedDatabase() {
       hasDishwasher: true,
       petFriendly: false,
       hasDoorman: false,
-      hasElevator: false,
-      hasParking: true,
-      hasAirConditioning: true,
-      hasOutdoorSpace: true,
       hasVirtualTour: false,
-      isAvailable: true,
       isPublished: true,
       noFee: true,
       availableDate: new Date().toISOString(),
-      mainImage: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
       images: [
         "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80",
         "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
         "https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2187&q=80"
       ],
-      coordinates: { lat: 40.7699, lng: -73.9654 },
+      amenities: ["In-Unit Laundry", "Dishwasher", "Backyard", "Central AC", "Parking"],
       landlordId: landlord.id
     },
     {
@@ -118,22 +106,16 @@ async function seedDatabase() {
       hasDishwasher: true,
       petFriendly: true,
       hasDoorman: true,
-      hasElevator: true,
-      hasParking: false,
-      hasAirConditioning: true,
-      hasOutdoorSpace: true,
       hasVirtualTour: true,
-      isAvailable: true,
       isPublished: true,
       noFee: false,
       availableDate: new Date().toISOString(),
-      mainImage: "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80",
       images: [
         "https://images.unsplash.com/photo-1489171078254-c3365d6e359f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2031&q=80",
         "https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
         "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
       ],
-      coordinates: { lat: 40.7308, lng: -73.9973 },
+      amenities: ["Doorman", "Dishwasher", "Roof Deck", "Gym", "Central AC"],
       landlordId: landlord.id
     },
     {
@@ -153,12 +135,7 @@ async function seedDatabase() {
       hasDishwasher: false,
       petFriendly: false,
       hasDoorman: false,
-      hasElevator: false,
-      hasParking: false,
-      hasAirConditioning: true,
-      hasOutdoorSpace: false,
       hasVirtualTour: false,
-      isAvailable: true,
       isPublished: true,
       noFee: true,
       availableDate: new Date().toISOString(),
@@ -168,7 +145,7 @@ async function seedDatabase() {
         "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2187&q=80",
         "https://images.unsplash.com/photo-1574643156929-51fa098b0394?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80"
       ],
-      coordinates: { lat: 40.7266, lng: -74.0048 },
+      amenities: ["Central AC", "Pre-War Details", "Exposed Brick"],
       landlordId: landlord.id
     },
     {
@@ -188,12 +165,7 @@ async function seedDatabase() {
       hasDishwasher: true,
       petFriendly: true,
       hasDoorman: true,
-      hasElevator: true,
-      hasParking: true,
-      hasAirConditioning: true,
-      hasOutdoorSpace: false,
       hasVirtualTour: true,
-      isAvailable: true,
       isPublished: true,
       noFee: false,
       availableDate: new Date().toISOString(),
@@ -203,7 +175,7 @@ async function seedDatabase() {
         "https://images.unsplash.com/photo-1524758631624-e2822e304c36?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
         "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
       ],
-      coordinates: { lat: 40.7185, lng: -74.0089 },
+      amenities: ["In-Unit Laundry", "Dishwasher", "Doorman", "Central AC", "Gym", "High Ceilings", "Parking"],
       landlordId: landlord.id
     },
     {
@@ -223,12 +195,7 @@ async function seedDatabase() {
       hasDishwasher: true,
       petFriendly: true,
       hasDoorman: false,
-      hasElevator: false,
-      hasParking: false,
-      hasAirConditioning: true,
-      hasOutdoorSpace: true,
       hasVirtualTour: true,
-      isAvailable: true,
       isPublished: true,
       noFee: true,
       availableDate: new Date().toISOString(),
@@ -238,7 +205,7 @@ async function seedDatabase() {
         "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80",
         "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80"
       ],
-      coordinates: { lat: 40.7142, lng: -73.9614 },
+      amenities: ["In-Unit Laundry", "Dishwasher", "Private Garden", "Central AC", "Renovated Kitchen", "Pet Friendly"],
       landlordId: landlord.id
     }
   ];
