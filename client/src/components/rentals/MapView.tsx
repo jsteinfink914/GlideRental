@@ -45,27 +45,31 @@ export default function MapView({
       const isHighlighted = selectedProperty?.id === property.id;
       
       // Calculate marker size and color intensity based on relevance score
-      const markerSize = hasScore ? Math.max(30, Math.min(50, 30 + (score / 10))) : 30;
-      const colorIntensity = hasScore ? Math.max(0.5, Math.min(1, score / 100)) : 0.7;
+      const markerSize = hasScore ? Math.max(36, Math.min(56, 36 + (score / 10))) : 36;
+      const colorIntensity = hasScore ? Math.max(0.7, Math.min(1, score / 100)) : 0.8;
+      
+      // Generate a consistent position based on property id
+      const positionX = ((property.id * 17) % 70) + 15; // between 15% and 85%
+      const positionY = ((property.id * 13) % 70) + 15; // between 15% and 85%
       
       return (
         <div 
           key={property.id}
           className={`absolute rounded-full cursor-pointer transition-all duration-300 
-                     flex items-center justify-center
-                     ${isHighlighted ? 'z-10 ring-4 ring-primary' : 'hover:z-10'}`}
+                     flex items-center justify-center shadow-lg
+                     ${isHighlighted ? 'z-10 ring-4 ring-primary' : 'hover:z-10 hover:ring-2 hover:ring-primary/70'}`}
           style={{
             width: `${markerSize}px`,
             height: `${markerSize}px`,
             backgroundColor: `rgba(var(--primary-rgb), ${colorIntensity})`,
-            // Random position for demonstration
-            left: `${10 + Math.random() * 80}%`,
-            top: `${10 + Math.random() * 80}%`,
+            left: `${positionX}%`,
+            top: `${positionY}%`,
+            transform: 'translate(-50%, -50%)',
           }}
           onClick={() => onSelectProperty(property)}
         >
           <span className="text-white text-xs font-bold">
-            ${Math.round(property.rent / 100)}
+            ${Math.round(property.rent / 1000)}K
           </span>
         </div>
       );
@@ -80,18 +84,21 @@ export default function MapView({
       // Calculate color based on score
       const opacity = Math.max(0.1, Math.min(0.4, area.score / 100));
       
+      // Generate consistent positions based on index
+      const positionX = ((index * 23) % 60) + 20; // between 20% and 80%
+      const positionY = ((index * 19) % 60) + 20; // between 20% and 80%
+      
       return (
         <div 
           key={index}
           className="absolute rounded-full pointer-events-none"
           style={{
-            width: `${area.radius * 5}px`,
-            height: `${area.radius * 5}px`,
+            width: `${80 + (area.radius * 3)}px`,
+            height: `${80 + (area.radius * 3)}px`,
             backgroundColor: `rgba(var(--primary-rgb), ${opacity})`,
             border: '2px dashed rgba(var(--primary-rgb), 0.8)',
-            // Random position for demonstration
-            left: `${10 + Math.random() * 80}%`,
-            top: `${10 + Math.random() * 80}%`,
+            left: `${positionX}%`,
+            top: `${positionY}%`,
             transform: 'translate(-50%, -50%)',
           }}
         />
@@ -156,13 +163,27 @@ export default function MapView({
         <div className="absolute inset-0 bg-secondary flex items-center justify-center">
           {/* Static map backdrop */}
           <div className="absolute inset-0 bg-[#f8f8f8]">
-            <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-73.98,40.73,12,0/1200x600?access_token=pk.placeholder')]"></div>
-            
             {/* Grid lines to simulate a map */}
             <div className="absolute inset-0 grid grid-cols-8 grid-rows-4">
               {Array.from({ length: 32 }).map((_, i) => (
                 <div key={i} className="border border-gray-200 opacity-30"></div>
               ))}
+            </div>
+            
+            {/* Roads and intersections */}
+            <div className="absolute inset-0">
+              <div className="absolute h-1 bg-gray-300 left-[10%] right-[10%] top-[25%]"></div>
+              <div className="absolute h-1 bg-gray-300 left-[10%] right-[10%] top-[50%]"></div>
+              <div className="absolute h-1 bg-gray-300 left-[10%] right-[10%] top-[75%]"></div>
+              <div className="absolute w-1 bg-gray-300 top-[10%] bottom-[10%] left-[25%]"></div>
+              <div className="absolute w-1 bg-gray-300 top-[10%] bottom-[10%] left-[50%]"></div>
+              <div className="absolute w-1 bg-gray-300 top-[10%] bottom-[10%] left-[75%]"></div>
+              
+              {/* Neighborhood labels */}
+              <div className="absolute text-xs text-gray-500 font-medium left-[20%] top-[30%]">Downtown</div>
+              <div className="absolute text-xs text-gray-500 font-medium left-[60%] top-[20%]">Uptown</div>
+              <div className="absolute text-xs text-gray-500 font-medium left-[40%] top-[60%]">Midtown</div>
+              <div className="absolute text-xs text-gray-500 font-medium left-[70%] top-[70%]">East Side</div>
             </div>
           </div>
           
