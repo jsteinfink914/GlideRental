@@ -209,8 +209,28 @@ const OnboardingForm = () => {
     // Log the final data for debugging
     console.log("Final submission data:", completeData);
     
-    // Final submission
-    onboardingMutation.mutate(completeData);
+    // DEBUGGING: Check for the current API response issue
+    const testSubmission = async () => {
+      try {
+        const res = await apiRequest("POST", "/api/user-preferences", completeData);
+        const jsonResponse = await res.json();
+        console.log("API response:", jsonResponse);
+        
+        // After successful API response, force redirection
+        console.log("Successful submission, now redirecting to /search");
+        window.location.href = "/search";
+      } catch (error) {
+        console.error("API request failed manually:", error);
+        toast({
+          title: "Error saving preferences",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+    };
+    
+    // Use direct API call for more debugging
+    testSubmission();
   };
 
   const goToPreviousStep = () => {
