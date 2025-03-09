@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 const ITEMS_PER_PAGE = 6;
 
 export default function SearchPage() {
+  // Log when the page loads
+  console.log("Search page loaded");
   const { user } = useAuth();
   const { mapState, selectProperty, clearSelectedProperty } = useMap();
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
