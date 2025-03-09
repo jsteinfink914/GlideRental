@@ -421,31 +421,6 @@ export default function PaymentsPage() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <div className="w-12 h-8 bg-blue-100 rounded flex items-center justify-center mr-3">
-                              <CreditCard className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">Visa ending in 4242</h4>
-                              <p className="text-sm text-text-medium">Expires 12/25</p>
-                            </div>
-                          </div>
-                          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">Default</Badge>
-                        </div>
-                        <div className="flex justify-end mt-4 space-x-2">
-                          <Button variant="outline" size="sm" className="text-text-medium">
-                            <Edit size={14} className="mr-1" />
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-text-medium">
-                            <Trash2 size={14} className="mr-1" />
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <div className="w-12 h-8 bg-blue-100 rounded flex items-center justify-center mr-3">
                               <Building className="h-5 w-5 text-primary" />
                             </div>
                             <div>
@@ -466,7 +441,7 @@ export default function PaymentsPage() {
                         </div>
                       </div>
 
-                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md mt-4">
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <div className="w-12 h-8 bg-green-100 rounded flex items-center justify-center mr-3">
@@ -494,7 +469,7 @@ export default function PaymentsPage() {
                         </div>
                       </div>
 
-                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md mt-4">
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <div className="w-12 h-8 bg-purple-100 rounded flex items-center justify-center mr-3">
