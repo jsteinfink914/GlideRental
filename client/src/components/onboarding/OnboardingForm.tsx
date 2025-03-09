@@ -113,7 +113,8 @@ const OnboardingForm = () => {
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues,
-    mode: "onSubmit"
+    mode: "onSubmit",
+    reValidateMode: "onSubmit"
   });
 
   const onboardingMutation = useMutation({
@@ -143,6 +144,7 @@ const OnboardingForm = () => {
     console.log("Form errors:", form.formState.errors);
     
     if (step < 3) {
+      // Move to next step regardless of validation errors
       setStep(step + 1);
       return;
     }
@@ -677,9 +679,14 @@ const OnboardingForm = () => {
           type="button"
           onClick={() => {
             console.log('Button clicked');
-            // Use handleSubmit manually
-            const submitHandler = form.handleSubmit(onSubmit);
-            submitHandler();
+            if (step < 3) {
+              // For steps 1 and 2, just advance to the next step without full validation
+              setStep(step + 1);
+            } else {
+              // For final submission, do full validation
+              const submitHandler = form.handleSubmit(onSubmit);
+              submitHandler();
+            }
           }}
           disabled={onboardingMutation.isPending}
         >
