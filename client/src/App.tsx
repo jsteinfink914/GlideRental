@@ -45,7 +45,7 @@ function Router() {
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/search" component={SearchPage} />
       <ProtectedRoute path="/for-you" component={FeedPage} />
-      <ProtectedRoute path="/search-tools" component={ToolsPage} />
+      <ProtectedRoute path="/tools" component={ToolsPage} />
       <ProtectedRoute path="/saved" component={SavedPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/portal" component={PortalPage} />
@@ -60,8 +60,8 @@ function Router() {
       <Route path="/feed">
         <RedirectTo to="/for-you" />
       </Route>
-      <Route path="/tools">
-        <RedirectTo to="/search-tools" />
+      <Route path="/search-tools">
+        <RedirectTo to="/tools" />
       </Route>
       <Route path="/neighborhood">
         <RedirectTo to="/search" />
