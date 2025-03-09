@@ -6,7 +6,7 @@ import Navigation from "@/components/layout/Navigation";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,20 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { 
+  CreditCard, 
+  Building, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  ArrowRight,
+  Plus,
+  Trash2,
+  Edit
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Payment } from "@shared/schema";
 
@@ -31,6 +45,7 @@ export default function PaymentsPage() {
   const [cardName, setCardName] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
+  const [autopayEnabled, setAutopayEnabled] = useState(false);
 
   // Fetch payments
   const { data: payments, isLoading } = useQuery({
@@ -66,7 +81,7 @@ export default function PaymentsPage() {
   });
 
   const filterPayments = (status: string) => {
-    if (!payments) return [];
+    if (!payments || !Array.isArray(payments)) return [];
     return payments.filter((payment: Payment) => payment.status === status);
   };
 
@@ -390,45 +405,48 @@ export default function PaymentsPage() {
                 <Card>
                   <CardHeader>
                     <div className="flex justify-between items-center">
-                      <CardTitle className="text-xl font-heading">Payment Methods</CardTitle>
+                      <div>
+                        <CardTitle className="text-xl font-heading">Payment Methods</CardTitle>
+                        <CardDescription>Manage your preferred payment methods</CardDescription>
+                      </div>
                       <Button className="bg-primary hover:bg-primary-light">
-                        <span className="material-icons mr-1">add</span>
+                        <Plus size={16} className="mr-1" />
                         Add Method
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="border rounded-lg p-4">
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <div className="w-12 h-8 bg-blue-100 rounded flex items-center justify-center mr-3">
-                              <span className="material-icons text-primary">credit_card</span>
+                              <CreditCard className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                               <h4 className="font-medium">Visa ending in 4242</h4>
                               <p className="text-sm text-text-medium">Expires 12/25</p>
                             </div>
                           </div>
-                          <Badge>Default</Badge>
+                          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">Default</Badge>
                         </div>
-                        <div className="flex justify-end mt-4">
-                          <Button variant="ghost" size="sm" className="text-text-medium">
-                            <span className="material-icons text-sm mr-1">edit</span>
+                        <div className="flex justify-end mt-4 space-x-2">
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Edit size={14} className="mr-1" />
                             Edit
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-text-medium">
-                            <span className="material-icons text-sm mr-1">delete</span>
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Trash2 size={14} className="mr-1" />
                             Remove
                           </Button>
                         </div>
                       </div>
                       
-                      <div className="border rounded-lg p-4">
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <div className="w-12 h-8 bg-blue-100 rounded flex items-center justify-center mr-3">
-                              <span className="material-icons text-primary">account_balance</span>
+                              <Building className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                               <h4 className="font-medium">Bank Account (Chase)</h4>
@@ -436,13 +454,68 @@ export default function PaymentsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex justify-end mt-4">
-                          <Button variant="ghost" size="sm" className="text-text-medium">
-                            <span className="material-icons text-sm mr-1">edit</span>
+                        <div className="flex justify-end mt-4 space-x-2">
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Edit size={14} className="mr-1" />
                             Edit
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-text-medium">
-                            <span className="material-icons text-sm mr-1">delete</span>
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Trash2 size={14} className="mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md mt-4">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center">
+                            <div className="w-12 h-8 bg-green-100 rounded flex items-center justify-center mr-3">
+                              <svg className="h-5 w-5 text-green-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M17 3H7C4.79086 3 3 4.79086 3 7V17C3 19.2091 4.79086 21 7 21H17C19.2091 21 21 19.2091 21 17V7C21 4.79086 19.2091 3 17 3Z" stroke="currentColor" strokeWidth="2" />
+                                <path d="M15 9C14.2044 9 13.4413 9.31607 12.8787 9.87868C12.3161 10.4413 12 11.2044 12 12V12C12 11.2044 11.6839 10.4413 11.1213 9.87868C10.5587 9.31607 9.79565 9 9 9H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M15 15C14.2044 15 13.4413 14.6839 12.8787 14.1213C12.3161 13.5587 12 12.7956 12 12V12C12 12.7956 11.6839 13.5587 11.1213 14.1213C10.5587 14.6839 9.79565 15 9 15H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 className="font-medium">Bilt Rewards</h4>
+                              <p className="text-sm text-text-medium">Mastercard ending in 8765</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-end mt-4 space-x-2">
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Edit size={14} className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Trash2 size={14} className="mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg p-4 shadow-sm transition-all hover:shadow-md mt-4">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center">
+                            <div className="w-12 h-8 bg-purple-100 rounded flex items-center justify-center mr-3">
+                              <svg className="h-5 w-5 text-purple-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" />
+                                <path d="M7.5 12.5L10.5 15.5L16.5 9.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 className="font-medium">Zelle</h4>
+                              <p className="text-sm text-text-medium">Connected to example@email.com</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-end mt-4 space-x-2">
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Edit size={14} className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-text-medium">
+                            <Trash2 size={14} className="mr-1" />
                             Remove
                           </Button>
                         </div>
@@ -451,17 +524,19 @@ export default function PaymentsPage() {
                     
                     <div className="mt-6">
                       <h3 className="font-medium text-lg mb-4">Autopay Settings</h3>
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
                         <div>
                           <h4 className="font-medium">Automatic Payments</h4>
                           <p className="text-sm text-text-medium">Pay rent automatically on the due date</p>
                         </div>
                         <div className="flex items-center">
-                          <span className="mr-2">Off</span>
-                          <div className="relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out border-2 border-transparent rounded-full cursor-pointer bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                            <span className="inline-block w-5 h-5 transition duration-200 ease-in-out transform translate-x-0 bg-white rounded-full shadow" />
-                          </div>
-                          <span className="ml-2">On</span>
+                          <span className="mr-2 text-sm">Off</span>
+                          <Switch 
+                            id="autopay" 
+                            checked={autopayEnabled} 
+                            onCheckedChange={setAutopayEnabled}
+                          />
+                          <span className="ml-2 text-sm">On</span>
                         </div>
                       </div>
                     </div>
