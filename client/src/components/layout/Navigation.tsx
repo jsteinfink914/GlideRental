@@ -30,7 +30,7 @@ export default function Navigation() {
       ]
     : [
         { href: "/search", label: "Search", icon: "search" },
-        { href: "/neighborhood", label: "Nearby", icon: "location_on" },
+        { href: "/nearby", label: "Nearby", icon: "location_on" },
         { href: "/portal", label: "Home", icon: "home" },
         { href: "/messages", label: "Messages", icon: "chat" },
         { href: "/account", label: "Account", icon: "person" },

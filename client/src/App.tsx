@@ -10,7 +10,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import SearchPage from "@/pages/search-page";
 import FeedPage from "@/pages/feed-page";
 import ToolsPage from "@/pages/tools-page";
-import NeighborhoodPage from "@/pages/neighborhood-page";
+import NearbyPage from "@/pages/nearby-page";
 import MessagesPage from "@/pages/messages-page";
 import PortalPage from "@/pages/portal-page";
 import PaymentsPage from "@/pages/payments-page";
@@ -66,7 +66,7 @@ function Router() {
       <Route path="/search-tools">
         <RedirectTo to="/search" />
       </Route>
-      <ProtectedRoute path="/neighborhood" component={NeighborhoodPage} />
+      <ProtectedRoute path="/nearby" component={NearbyPage} />
       <Route path="/roommates">
         <RedirectTo to="/portal" />
       </Route>
