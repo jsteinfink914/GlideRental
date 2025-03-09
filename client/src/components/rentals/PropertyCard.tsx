@@ -6,6 +6,7 @@ import { Heart, MapPin, BedDouble, Bath, Calendar } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import QuickApply from "./QuickApply";
 
 interface PropertyCardProps {
   property: Property;
@@ -117,8 +118,23 @@ export function PropertyCard({ property, isSaved = false, savedId, onSelect }: P
           {property.noFee && <Badge>No fee</Badge>}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex items-center justify-between">
         <p className="text-lg font-bold">${property.rent.toLocaleString()}/month</p>
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="w-1/2"
+        >
+          <QuickApply 
+            property={property}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+              toast({
+                title: "Application Submitted",
+                description: "Your application has been successfully submitted."
+              });
+            }}
+          />
+        </div>
       </CardFooter>
     </Card>
   );

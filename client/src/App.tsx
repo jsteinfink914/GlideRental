@@ -21,6 +21,7 @@ import LeasingPage from "@/pages/landlord/leasing-page";
 import BuildingOverviewPage from "@/pages/landlord/building-overview";
 import HomePage from "@/pages/home-page";
 import ForYouPage from "@/pages/for-you-page";
+import DocumentsPage from "@/pages/documents-page";
 
 // Redirect component for wouter
 function RedirectTo({ to }: { to: string }) {
@@ -49,6 +50,7 @@ function Router() {
       <ProtectedRoute path="/portal" component={PortalPage} />
       <ProtectedRoute path="/payments" component={PaymentsPage} />
       <ProtectedRoute path="/account" component={AccountPage} />
+      <ProtectedRoute path="/documents" component={DocumentsPage} />
       
       {/* Landlord Routes */}
       <ProtectedRoute path="/landlord/leasing" component={LeasingPage} />
