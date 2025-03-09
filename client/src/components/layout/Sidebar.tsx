@@ -14,6 +14,7 @@ export default function Sidebar() {
         { href: "/landlord/leasing", label: "Leasing", icon: "apartment" },
         { href: "/landlord/buildings", label: "Buildings", icon: "location_city" },
         { href: "/messages", label: "Messages", icon: "chat" },
+        { href: "/documents", label: "Documents", icon: "description" },
         { href: "/account", label: "Account", icon: "person" },
       ]
     : [
@@ -21,6 +22,7 @@ export default function Sidebar() {
         { href: "/payments", label: "Payments", icon: "payments" },
         { href: "/neighborhood", label: "Neighborhood", icon: "location_on" },
         { href: "/portal", label: "Home", icon: "home" },
+        { href: "/documents", label: "Documents", icon: "description" },
         { href: "/messages", label: "Messages", icon: "chat" },
       ];
       
