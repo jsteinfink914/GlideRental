@@ -20,6 +20,7 @@ import SavedPage from "@/pages/saved-page";
 import LeasingPage from "@/pages/landlord/leasing-page";
 import BuildingOverviewPage from "@/pages/landlord/building-overview";
 import HomePage from "@/pages/home-page";
+import ForYouPage from "@/pages/for-you-page";
 
 // Redirect component for wouter
 function RedirectTo({ to }: { to: string }) {
@@ -53,16 +54,10 @@ function Router() {
       <ProtectedRoute path="/landlord/leasing" component={LeasingPage} />
       <ProtectedRoute path="/landlord/buildings" component={BuildingOverviewPage} />
       
-      {/* Legacy Routes - Redirect to new pages */}
-      <Route path="/for-you">
-        <RedirectTo to="/portal" />
-      </Route>
-      <Route path="/tools">
-        <RedirectTo to="/search" />
-      </Route>
-      <Route path="/saved">
-        <RedirectTo to="/search" />
-      </Route>
+      {/* Search Section Pages */}
+      <ProtectedRoute path="/for-you" component={ForYouPage} />
+      <ProtectedRoute path="/tools" component={ToolsPage} />
+      <ProtectedRoute path="/saved" component={SavedPage} />
       <Route path="/feed">
         <RedirectTo to="/portal" />
       </Route>

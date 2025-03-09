@@ -1,66 +1,49 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { Property } from "@shared/schema";
 import Navigation from "@/components/layout/Navigation";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import Sidebar from "@/components/layout/Sidebar";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RentalTabs from "@/components/layout/RentalTabs";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Property } from "@shared/schema";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ToolsPage() {
-  const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
-
-  // Fetch user's saved properties
+  const { user } = useAuth();
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<number[]>([]);
+  
+  // Fetch saved properties
   const { data: savedProperties, isLoading } = useQuery<{savedId: number; property: Property}[]>({
     queryKey: ['/api/saved-properties'],
+    enabled: !!user
   });
-
-  const togglePropertySelection = (propertyId: number) => {
-    setSelectedProperties(prev => 
-      prev.includes(propertyId)
-        ? prev.filter(id => id !== propertyId)
-        : [...prev, propertyId]
-    );
+  
+  const isPropertySelected = (id: number) => selectedPropertyIds.includes(id);
+  
+  const togglePropertySelection = (id: number) => {
+    if (isPropertySelected(id)) {
+      setSelectedPropertyIds(selectedPropertyIds.filter((propId) => propId !== id));
+    } else {
+      if (selectedPropertyIds.length < 3) {
+        setSelectedPropertyIds([...selectedPropertyIds, id]);
+      }
+    }
   };
-
-  const isPropertySelected = (propertyId: number) => {
-    return selectedProperties.includes(propertyId);
-  };
-
-  // Filter properties that are selected for comparison
+  
   const propertiesForComparison = savedProperties
-    ?.filter((item: {savedId: number; property: Property}) => isPropertySelected(item.property.id))
-    .map((item: {savedId: number; property: Property}) => item.property) || [];
-
-  // Function to render amenity check or cross
+    ?.filter(item => isPropertySelected(item.property.id))
+    .map(item => item.property) || [];
+  
   const renderAmenityStatus = (property: Property, amenity: string) => {
-    const amenityMapping: Record<string, keyof Property> = {
-      'In-Unit Laundry': 'hasInUnitLaundry',
-      'Dishwasher': 'hasDishwasher',
-      'Pet Friendly': 'petFriendly',
-      'Doorman': 'hasDoorman',
-      'Virtual Tour': 'hasVirtualTour',
-      'No Fee': 'noFee'
-    };
-    
-    const propertyKey = amenityMapping[amenity];
-    const hasAmenity = propertyKey ? property[propertyKey] : false;
-    
-    return hasAmenity ? (
-      <CheckCircle2 className="h-5 w-5 text-green-500" />
-    ) : (
-      <XCircle className="h-5 w-5 text-red-500" />
+    const hasAmenity = property[amenity as keyof Property];
+    return (
+      <div className={`flex items-center ${hasAmenity ? "text-green-500" : "text-red-500"}`}>
+        <span className="material-icons mr-1">{hasAmenity ? "check_circle" : "cancel"}</span>
+        <span>{hasAmenity ? "Yes" : "No"}</span>
+      </div>
     );
   };
 
@@ -73,277 +56,181 @@ export default function ToolsPage() {
 
         <main className="flex-1 lg:pl-64 pb-16 md:pb-0">
           <div className="container mx-auto px-4 py-6">
-            {/* Main Navigation Tabs */}
-            <div className="flex mb-6 border-b border-gray-200">
-              <a 
-                href="/search"
-                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
-              >
-                <span className="material-icons mr-2">search</span>
-                Search
-              </a>
-              <a 
-                href="/for-you"
-                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
-              >
-                <span className="material-icons mr-2">recommend</span>
-                For You
-              </a>
-              <a 
-                href="/saved"
-                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
-              >
-                <span className="material-icons mr-2">bookmarks</span>
-                Saved
-              </a>
-              <a 
-                href="/tools"
-                className="flex items-center px-6 py-3 font-medium text-primary border-b-2 border-primary"
-              >
-                <span className="material-icons mr-2">view_list</span>
-                Tools
-              </a>
-            </div>
             
             {/* Page Title */}
             <div className="mb-6">
-              <h1 className="text-3xl font-heading font-bold text-text-dark">Tools</h1>
+              <h1 className="text-3xl font-heading font-bold text-text-dark">Rental Tools</h1>
               <p className="text-text-medium mt-2">
-                Compare properties and find the best match for your needs
+                Compare properties, calculate costs, and more
               </p>
             </div>
 
-            {/* Tools Section */}
-            <div className="mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-heading">
-                    Compatibility Tool
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-text-medium mb-6">
-                    Select properties to compare and find the best match for your needs.
-                  </p>
+            {/* Content Tabs */}
+            <RentalTabs />
 
-                  {/* Properties Selection */}
-                  <div className="mb-8">
-                    <h3 className="font-heading font-medium text-lg mb-4">
-                      Your Saved Properties
-                    </h3>
-                    
-                    {isLoading ? (
-                      <div className="space-y-4">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className="flex items-center space-x-4">
-                            <Skeleton className="h-5 w-5" />
-                            <div className="flex-1 space-y-2">
-                              <Skeleton className="h-5 w-1/2" />
-                              <Skeleton className="h-4 w-full" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : !savedProperties?.length ? (
-                      <div className="text-center py-8 bg-secondary rounded-lg">
-                        <p className="text-text-medium mb-4">
-                          You haven't saved any properties yet
-                        </p>
-                        <Button 
-                          onClick={() => window.location.href = "/search"} 
-                          className="bg-primary hover:bg-primary-light"
+            {/* Tools Tabs */}
+            <Tabs defaultValue="compare" className="mt-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="compare">Compare Properties</TabsTrigger>
+                <TabsTrigger value="calculator">Rent Calculator</TabsTrigger>
+                <TabsTrigger value="checklist">Moving Checklist</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="compare">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                  {/* Select properties section */}
+                  <div className="border p-4 rounded-lg md:col-span-3">
+                    <h3 className="font-medium mb-4">Select up to 3 properties to compare</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {savedProperties?.map((item: {savedId: number; property: Property}) => (
+                        <div 
+                          key={item.property.id}
+                          className={`border rounded-lg p-3 flex items-center cursor-pointer ${
+                            isPropertySelected(item.property.id) ? "border-primary bg-secondary/10" : ""
+                          }`}
+                          onClick={() => togglePropertySelection(item.property.id)}
                         >
-                          Browse Properties
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {savedProperties.map((item: {savedId: number; property: Property}) => (
-                          <div key={item.savedId} className="flex items-start border-b border-gray-100 pb-4">
-                            <Checkbox
-                              id={`property-${item.property.id}`}
-                              checked={isPropertySelected(item.property.id)}
-                              onCheckedChange={() => togglePropertySelection(item.property.id)}
-                              className="mt-1 mr-4"
-                            />
-                            <div>
-                              <label 
-                                htmlFor={`property-${item.property.id}`}
-                                className="font-medium cursor-pointer"
-                              >
-                                {item.property.title}
-                              </label>
-                              <p className="text-sm text-text-medium">
-                                ${item.property.rent.toLocaleString()}/mo · {item.property.bedrooms === 0 ? 'Studio' : `${item.property.bedrooms} bed`} · {item.property.bathrooms} bath · {item.property.squareFeet ? `${item.property.squareFeet.toLocaleString()} sqft` : 'N/A'}
-                              </p>
-                              <p className="text-sm text-text-medium">
-                                {item.property.address}, {item.property.neighborhood}
-                              </p>
-                            </div>
+                          <Checkbox 
+                            checked={isPropertySelected(item.property.id)}
+                            className="mr-3"
+                            disabled={selectedPropertyIds.length >= 3 && !isPropertySelected(item.property.id)}
+                          />
+                          <div className="flex-1 truncate">
+                            <p className="font-medium truncate">{item.property.title}</p>
+                            <p className="text-sm text-text-medium truncate">{item.property.neighborhood}</p>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-
-                  {/* Comparison Table */}
-                  {propertiesForComparison.length > 0 && (
-                    <div>
-                      <h3 className="font-heading font-medium text-lg mb-4">
-                        Property Comparison
-                      </h3>
-                      
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-1/4">Features</TableHead>
-                              {propertiesForComparison.map((property: Property) => (
-                                <TableHead key={property.id}>
-                                  {property.title}
-                                </TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {/* Basic Info */}
-                            <TableRow>
-                              <TableCell className="font-medium">Price</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-price`}>
-                                  ${property.rent.toLocaleString()}/mo
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Bedrooms</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-bedrooms`}>
-                                  {property.bedrooms === 0 ? 'Studio' : property.bedrooms}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Bathrooms</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-bathrooms`}>
-                                  {property.bathrooms}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Square Feet</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-sqft`}>
-                                  {property.squareFeet ? property.squareFeet.toLocaleString() : 'N/A'}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Neighborhood</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-neighborhood`}>
-                                  {property.neighborhood}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Available Date</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-date`}>
-                                  {new Date(property.availableDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </TableCell>
-                              ))}
-                            </TableRow>
+                  
+                  {/* Comparison section */}
+                  {propertiesForComparison.length > 0 ? (
+                    <>
+                      {/* Basic info comparison */}
+                      <Card className="md:col-span-3">
+                        <CardHeader>
+                          <CardTitle>Basic Information</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-4 gap-4">
+                            <div></div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={property.id} className="text-center">
+                                <p className="font-medium">{property.title}</p>
+                              </div>
+                            ))}
                             
-                            {/* Amenities */}
-                            <TableRow>
-                              <TableCell className="font-medium">In-Unit Laundry</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-laundry`} className="text-center">
-                                  {renderAmenityStatus(property, 'In-Unit Laundry')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Dishwasher</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-dishwasher`} className="text-center">
-                                  {renderAmenityStatus(property, 'Dishwasher')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Pet Friendly</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-pet`} className="text-center">
-                                  {renderAmenityStatus(property, 'Pet Friendly')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Doorman</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-doorman`} className="text-center">
-                                  {renderAmenityStatus(property, 'Doorman')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Virtual Tour</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-tour`} className="text-center">
-                                  {renderAmenityStatus(property, 'Virtual Tour')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">No Fee</TableCell>
-                              {propertiesForComparison.map(property => (
-                                <TableCell key={`${property.id}-fee`} className="text-center">
-                                  {renderAmenityStatus(property, 'No Fee')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </div>
+                            <div className="font-medium">Price</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-price`} className="text-center">
+                                ${property.rent.toLocaleString()}/mo
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Bedrooms</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-bedrooms`} className="text-center">
+                                {property.bedrooms}
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Bathrooms</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-bathrooms`} className="text-center">
+                                {property.bathrooms}
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Square Feet</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-sqft`} className="text-center">
+                                {property.squareFeet}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Amenities comparison */}
+                      <Card className="md:col-span-3">
+                        <CardHeader>
+                          <CardTitle>Amenities</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-4 gap-4">
+                            <div></div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-header`} className="text-center">
+                                <p className="font-medium">{property.title}</p>
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">In-unit Laundry</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-laundry`} className="text-center">
+                                {renderAmenityStatus(property, 'hasInUnitLaundry')}
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Dishwasher</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-dishwasher`} className="text-center">
+                                {renderAmenityStatus(property, 'hasDishwasher')}
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Pet Friendly</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-pet`} className="text-center">
+                                {renderAmenityStatus(property, 'petFriendly')}
+                              </div>
+                            ))}
+                            
+                            <div className="font-medium">Doorman</div>
+                            {propertiesForComparison.map((property: Property) => (
+                              <div key={`${property.id}-doorman`} className="text-center">
+                                {renderAmenityStatus(property, 'hasDoorman')}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  ) : (
+                    <div className="md:col-span-3 text-center py-12 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium text-lg mb-2">Select properties to compare</h3>
+                      <p className="text-text-medium mb-4">
+                        Choose up to 3 properties from your saved list to compare side by side.
+                      </p>
+                      <a href="/saved" className="text-primary font-medium">
+                        View saved properties
+                      </a>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Additional Tools */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-heading">Rent Calculator</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-text-medium mb-4">
-                    Calculate how much rent you can afford based on your income.
-                  </p>
-                  <Button className="bg-primary hover:bg-primary-light">
-                    Open Calculator
-                  </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </TabsContent>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-heading">Moving Checklist</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-text-medium mb-4">
-                    Keep track of everything you need to do before and after your move.
+              <TabsContent value="calculator">
+                <div className="py-6 text-center">
+                  <p className="text-lg mb-4">Rent calculator coming soon!</p>
+                  <p className="text-text-medium">
+                    We're working on a tool to help you calculate total monthly costs,
+                    including rent, utilities, and other expenses.
                   </p>
-                  <Button className="bg-primary hover:bg-primary-light">
-                    View Checklist
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="checklist">
+                <div className="py-6 text-center">
+                  <p className="text-lg mb-4">Moving checklist coming soon!</p>
+                  <p className="text-text-medium">
+                    We're creating a comprehensive checklist to help you prepare for your move,
+                    from packing to settling into your new home.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
