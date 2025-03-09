@@ -12,14 +12,13 @@ export default function MobileNavigation() {
     ? [
         { href: "/landlord/leasing", label: "Leasing", icon: "apartment" },
         { href: "/landlord/buildings", label: "Buildings", icon: "location_city" },
-        { href: "/documents", label: "Docs", icon: "description" },
         { href: "/messages", label: "Messages", icon: "chat" },
         { href: "/account", label: "Account", icon: "person" },
       ]
     : [
         { href: "/search", label: "Search", icon: "search" },
+        { href: "/neighborhood", label: "Nearby", icon: "location_on" },
         { href: "/payments", label: "Pay", icon: "payments" },
-        { href: "/documents", label: "Docs", icon: "description" },
         { href: "/portal", label: "Home", icon: "home" },
         { href: "/messages", label: "Chat", icon: "chat" },
       ];
