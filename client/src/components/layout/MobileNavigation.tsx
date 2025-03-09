@@ -18,6 +18,7 @@ export default function MobileNavigation() {
     : [
         { href: "/search", label: "Search", icon: "search" },
         { href: "/portal", label: "Home", icon: "home" },
+        { href: "/neighborhood", label: "Nearby", icon: "location_on" },
         { href: "/messages", label: "Messages", icon: "chat" },
         { href: "/account", label: "Account", icon: "person" },
       ];

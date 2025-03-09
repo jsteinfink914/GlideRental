@@ -19,6 +19,7 @@ export default function Sidebar() {
     : [
         { href: "/search", label: "Search", icon: "search" },
         { href: "/portal", label: "Home", icon: "home" },
+        { href: "/neighborhood", label: "Neighborhood", icon: "location_on" },
         { href: "/messages", label: "Messages", icon: "chat" },
         { href: "/payments", label: "Payments", icon: "payments" },
         { href: "/account", label: "Account", icon: "person" },

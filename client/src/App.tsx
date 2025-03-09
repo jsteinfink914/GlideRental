@@ -64,9 +64,7 @@ function Router() {
       <Route path="/search-tools">
         <RedirectTo to="/search" />
       </Route>
-      <Route path="/neighborhood">
-        <RedirectTo to="/search" />
-      </Route>
+      <ProtectedRoute path="/neighborhood" component={NeighborhoodPage} />
       <Route path="/roommates">
         <RedirectTo to="/portal" />
       </Route>
