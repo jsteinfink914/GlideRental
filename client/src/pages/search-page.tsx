@@ -34,9 +34,11 @@ export default function SearchPage() {
   }, [filters]);
 
   // Fetch properties
-  const { data: properties, isLoading: isLoadingProperties } = useQuery<Property[]>({
+  const { data: properties, isLoading: isLoadingProperties, error: propertiesError } = useQuery<Property[]>({
     queryKey: ['/api/properties', filters],
     queryFn: async () => {
+      console.log("Fetching properties with filters:", filters);
+      
       // Convert filters to query parameters
       const params = new URLSearchParams();
       
@@ -54,13 +56,26 @@ export default function SearchPage() {
       if (filters.noFee !== undefined) params.append('noFee', filters.noFee.toString());
       
       const queryString = params.toString();
-      const response = await fetch(`/api/properties${queryString ? `?${queryString}` : ''}`);
+      const url = `/api/properties${queryString ? `?${queryString}` : ''}`;
+      console.log("Fetching URL:", url);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch properties');
+      try {
+        const response = await fetch(url);
+        console.log("Response status:", response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Fetch error:", errorText);
+          throw new Error(`Failed to fetch properties: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log("Fetched properties count:", data.length);
+        return data;
+      } catch (err) {
+        console.error("Property fetch error:", err);
+        throw err;
       }
-      
-      return response.json();
     }
   });
 

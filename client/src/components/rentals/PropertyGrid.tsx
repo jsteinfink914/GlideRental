@@ -25,9 +25,19 @@ export default function PropertyGrid({
   
   // If properties are provided directly, use those
   // Otherwise, this component will fetch them
-  const { data: fetchedProperties, isLoading: isLoadingProperties } = useQuery({
+  const { data: fetchedProperties, isLoading: isLoadingProperties, error } = useQuery({
     queryKey: ['/api/properties'],
     enabled: !properties && !isLoading,
+  });
+  
+  // Debug logging
+  console.log("PropertyGrid render:", {
+    receivedProps: !!properties,
+    propertiesLength: properties?.length || 0,
+    fetchedPropertiesLength: Array.isArray(fetchedProperties) ? fetchedProperties.length : 0,
+    isDirectLoading: isLoading,
+    isQueryLoading: isLoadingProperties,
+    error: error?.message
   });
   
   const displayedProperties = properties || (fetchedProperties as Property[]) || [];
