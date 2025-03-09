@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { Link } from "wouter";
 import { Property } from "@shared/schema";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Badge } from "@/components/ui/badge";
+import { Heart, MapPin, BedDouble, Bath, Calendar } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { useMutation } from "@tanstack/react-query";
 
 interface PropertyCardProps {
   property: Property;
@@ -15,202 +14,112 @@ interface PropertyCardProps {
   onSelect?: (property: Property) => void;
 }
 
-export default function PropertyCard({ property, isSaved = false, savedId, onSelect }: PropertyCardProps) {
+export function PropertyCard({ property, isSaved = false, savedId, onSelect }: PropertyCardProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+  const queryClient = useQueryClient();
+
   const saveMutation = useMutation({
-    mutationFn: async (propertyId: number) => {
-      const res = await apiRequest("POST", "/api/saved-properties", { propertyId });
-      return await res.json();
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/saved-properties", {
+        propertyId: property.id
+      });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/saved-properties'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-properties"] });
       toast({
         title: "Property saved",
-        description: "The property has been added to your saved listings."
+        description: "This property has been added to your saved list."
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to save property",
+        title: "Error",
         description: error.message,
         variant: "destructive"
       });
     }
   });
-  
+
   const unsaveMutation = useMutation({
-    mutationFn: async (savedPropertyId: number) => {
-      await apiRequest("DELETE", `/api/saved-properties/${savedPropertyId}`);
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/saved-properties/${savedId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/saved-properties'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-properties"] });
       toast({
         title: "Property removed",
-        description: "The property has been removed from your saved listings."
+        description: "This property has been removed from your saved list."
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to remove property",
+        title: "Error",
         description: error.message,
         variant: "destructive"
       });
     }
   });
-  
-  const handleSaveToggle = () => {
-    if (isSaved && savedId) {
-      unsaveMutation.mutate(savedId);
+
+  const handleSaveClick = () => {
+    if (isSaved) {
+      unsaveMutation.mutate();
     } else {
-      saveMutation.mutate(property.id);
+      saveMutation.mutate();
     }
   };
-  
-  const handlePreviousImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? property.images.length - 1 : prev - 1
-    );
-  };
-  
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentImageIndex((prev) =>
-      prev === property.images.length - 1 ? 0 : prev + 1
-    );
-  };
-  
-  const handleCardClick = () => {
-    if (onSelect) {
-      onSelect(property);
-    }
-  };
-  
-  // Get current image or fallback
-  const currentImage = property.images && property.images.length > 0
-    ? property.images[currentImageIndex]
-    : 'https://via.placeholder.com/500x300?text=No+Image+Available';
-  
-  // Format bathroom numbers (e.g., 1.5 baths)
-  const formatBathrooms = (num: number) => {
-    return num % 1 === 0 ? num : num.toFixed(1);
-  };
-  
+
   return (
-    <Card 
-      className="property-card overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-lg"
-      onClick={handleCardClick}
-    >
-      {/* Property Image Gallery */}
-      <div className="relative h-60 bg-gray-100">
-        <img 
-          src={currentImage} 
-          alt={property.title} 
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute top-4 left-4 bg-white rounded-lg px-2 py-1 text-sm font-medium text-primary">
-          ${property.rent.toLocaleString()}/mo
+    <Card onClick={() => onSelect?.(property)} className="relative w-full cursor-pointer transition-colors hover:bg-secondary/10">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <CardTitle className="line-clamp-2">{property.title}</CardTitle>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSaveClick();
+            }}
+            variant="ghost"
+            size="icon"
+            disabled={saveMutation.isPending || unsaveMutation.isPending}
+          >
+            <Heart
+              className={`h-5 w-5 ${isSaved ? "fill-destructive text-destructive" : "text-muted-foreground"}`}
+            />
+          </Button>
         </div>
-        {property.noFee && (
-          <div className="absolute top-4 left-24 bg-accent text-white rounded-lg px-2 py-1 text-sm font-medium">
-            No Fee
-          </div>
-        )}
-        <button 
-          className={`absolute top-4 right-4 w-8 h-8 ${
-            isSaved ? 'bg-secondary' : 'bg-white'
-          } rounded-full flex items-center justify-center shadow-sm hover:bg-secondary`}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSaveToggle();
-          }}
-          disabled={saveMutation.isPending || unsaveMutation.isPending}
-        >
-          <span className={`material-icons ${isSaved ? 'text-primary' : 'text-text-medium'}`}>
-            {isSaved ? 'favorite' : 'favorite_border'}
-          </span>
-        </button>
-        
-        {property.images && property.images.length > 1 && (
-          <div className="absolute bottom-4 right-4 flex gap-2">
-            <button 
-              className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-secondary"
-              onClick={handlePreviousImage}
-            >
-              <span className="material-icons text-text-medium">navigate_before</span>
-            </button>
-            <button 
-              className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-secondary"
-              onClick={handleNextImage}
-            >
-              <span className="material-icons text-text-medium">navigate_next</span>
-            </button>
-          </div>
-        )}
-      </div>
-      
-      {/* Property Info */}
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-heading font-medium text-lg text-text-dark">{property.title}</h3>
-          {property.rating && (
-            <div className="flex items-center">
-              <span className="material-icons text-warning text-sm">star</span>
-              <span className="text-text-medium text-sm ml-1">{property.rating}</span>
-            </div>
-          )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          <span>{property.neighborhood}</span>
         </div>
-        
-        <p className="text-text-medium text-sm mb-3">
-          {property.address}, {property.neighborhood}, {property.city}
-        </p>
-        
-        {/* Property Features */}
-        <div className="flex gap-4 mb-4">
-          <div className="flex items-center gap-1">
-            <span className="material-icons text-text-medium text-sm">king_bed</span>
-            <span className="text-sm">
-              {property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} bed${property.bedrooms > 1 ? 's' : ''}`}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="material-icons text-text-medium text-sm">bathtub</span>
-            <span className="text-sm">{formatBathrooms(property.bathrooms)} bath{property.bathrooms !== 1 ? 's' : ''}</span>
-          </div>
-          {property.squareFeet && (
-            <div className="flex items-center gap-1">
-              <span className="material-icons text-text-medium text-sm">straighten</span>
-              <span className="text-sm">{property.squareFeet.toLocaleString()} sqft</span>
-            </div>
-          )}
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <BedDouble className="h-3 w-3" />
+            {property.bedrooms} {property.bedrooms === 1 ? "bed" : "beds"}
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Bath className="h-3 w-3" />
+            {property.bathrooms} {property.bathrooms === 1 ? "bath" : "baths"}
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            Available {new Date(property.availableDate).toLocaleDateString()}
+          </Badge>
         </div>
-        
-        {/* Available Date or Features */}
-        <div className="flex justify-between items-center">
-          {property.availableDate && (
-            <span className="text-sm text-text-medium">
-              Available {new Date(property.availableDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          )}
-          
-          {property.hasVirtualTour && (
-            <span className="text-sm text-success font-medium">Virtual Tour Available</span>
-          )}
-          
-          {property.hasDoorman && (
-            <span className="text-sm text-success font-medium">Doorman Building</span>
-          )}
-          
-          <Link href={`/properties/${property.id}`}>
-            <Button variant="link" className="text-primary font-medium text-sm p-0">
-              View Details
-            </Button>
-          </Link>
+        <div className="flex flex-wrap gap-1">
+          {property.hasInUnitLaundry && <Badge>In-unit laundry</Badge>}
+          {property.hasDishwasher && <Badge>Dishwasher</Badge>}
+          {property.petFriendly && <Badge>Pet friendly</Badge>}
+          {property.hasDoorman && <Badge>Doorman</Badge>}
+          {property.hasVirtualTour && <Badge>Virtual tour</Badge>}
+          {property.noFee && <Badge>No fee</Badge>}
         </div>
       </CardContent>
+      <CardFooter>
+        <p className="text-lg font-bold">${property.rent.toLocaleString()}/month</p>
+      </CardFooter>
     </Card>
   );
 }

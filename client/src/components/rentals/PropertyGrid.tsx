@@ -1,5 +1,5 @@
 import { Property } from "@shared/schema";
-import PropertyCard from "./PropertyCard";
+import { PropertyCard } from "./PropertyCard";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,7 +30,7 @@ export default function PropertyGrid({
     enabled: !properties && !isLoading,
   });
   
-  const displayedProperties = properties || fetchedProperties || [];
+  const displayedProperties = properties || (fetchedProperties as Property[]) || [];
   const showLoading = isLoading || isLoadingProperties;
 
   return (

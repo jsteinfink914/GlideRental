@@ -62,7 +62,7 @@ export default function SavedPage() {
               </div>
             ) : (
               <PropertyGrid 
-                properties={savedProperties.map(item => item.property)}
+                properties={savedProperties?.map(item => item.property) || []}
                 savedProperties={savedProperties}
                 isLoading={isLoadingSaved}
                 onSelectProperty={handlePropertySelect}

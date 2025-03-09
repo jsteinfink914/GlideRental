@@ -15,6 +15,143 @@ import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
+import OpenAI from "openai";
+
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+const openai = new OpenAI({ apiKey: process.env.VITE_OPENAI_API_KEY });
+
+interface PropertyQuery {
+  description: string;
+  preferences?: {
+    neighborhood?: string;
+    priceRange?: { min?: number; max?: number };
+    amenities?: string[];
+    proximity?: string[];
+  };
+}
+
+interface AIPropertySuggestion {
+  propertyIds: number[];
+  explanation: string;
+  relevanceScores: { [propertyId: number]: number };
+  highlightedAreas?: { 
+    center: { lat: number; lng: number };
+    radius: number;
+    score: number;
+  }[];
+}
+
+/**
+ * Uses GPT-4o to analyze user preferences and return property recommendations
+ */
+async function getAIPropertyRecommendations(
+  query: PropertyQuery,
+  availableProperties: any[]
+): Promise<AIPropertySuggestion> {
+  try {
+    // Format property data for AI analysis
+    const propertyData = availableProperties.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      price: p.rent,
+      neighborhood: p.neighborhood,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      amenities: [
+        p.hasInUnitLaundry ? 'in-unit laundry' : null,
+        p.hasDishwasher ? 'dishwasher' : null,
+        p.petFriendly ? 'pet friendly' : null,
+        p.hasDoorman ? 'doorman' : null,
+      ].filter(Boolean),
+      coordinates: { lat: p.latitude, lng: p.longitude },
+    }));
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: 
+            "You are an AI real estate assistant that helps find ideal properties. " +
+            "Analyze user preferences against available properties and return JSON with:" +
+            "1. propertyIds: Array of property IDs that match user preferences" +
+            "2. explanation: Brief explanation of why these properties match" +
+            "3. relevanceScores: Object mapping property IDs to scores (0-100)" +
+            "4. highlightedAreas: Optional array of areas to highlight on map"
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            userQuery: query,
+            availableProperties: propertyData
+          })
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    
+    return {
+      propertyIds: result.propertyIds || [],
+      explanation: result.explanation || "Here are some properties that might interest you.",
+      relevanceScores: result.relevanceScores || {},
+      highlightedAreas: result.highlightedAreas || []
+    };
+  } catch (error) {
+    console.error("AI recommendation error:", error);
+    return {
+      propertyIds: availableProperties.map(p => p.id),
+      explanation: "We couldn't process your AI request. Showing all available properties.",
+      relevanceScores: availableProperties.reduce((acc, p) => ({...acc, [p.id]: 50}), {})
+    };
+  }
+}
+
+/**
+ * Processes natural language location queries
+ */
+async function processLocationQuery(
+  query: string
+): Promise<{
+  searchArea?: { center: { lat: number; lng: number }; radius: number };
+  locationPreferences?: string[];
+  explanation: string;
+}> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: 
+            "You are a location analysis assistant that interprets natural language queries about locations. " +
+            "Return JSON with locationPreferences (array of keywords) and explanation (reason for selection)."
+        },
+        {
+          role: "user",
+          content: `Analyze this location query: "${query}"`
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    
+    return {
+      locationPreferences: result.locationPreferences || [],
+      explanation: result.explanation || "I've analyzed your location preferences.",
+      searchArea: result.searchArea
+    };
+  } catch (error) {
+    console.error("Location query processing error:", error);
+    return {
+      explanation: "I couldn't process your location query."
+    };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
@@ -242,6 +379,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSavedProperty(id);
       res.status(204).send();
     } catch (error) {
+      next(error);
+    }
+  });
+
+  // AI Property Recommendations API
+  app.post("/api/ai/property-recommendations", async (req, res, next) => {
+    try {
+      const querySchema = z.object({
+        description: z.string(),
+        preferences: z.object({
+          neighborhood: z.string().optional(),
+          priceRange: z.object({
+            min: z.number().optional(),
+            max: z.number().optional(),
+          }).optional(),
+          amenities: z.array(z.string()).optional(),
+          proximity: z.array(z.string()).optional(),
+        }).optional(),
+      });
+
+      const query = querySchema.parse(req.body);
+      
+      // Get all properties to analyze
+      const properties = await storage.getProperties();
+      
+      const recommendations = await getAIPropertyRecommendations(query, properties);
+      res.json(recommendations);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      next(error);
+    }
+  });
+
+  // Location Query Processing API
+  app.post("/api/ai/process-location", async (req, res, next) => {
+    try {
+      const querySchema = z.object({
+        query: z.string(),
+      });
+
+      const { query } = querySchema.parse(req.body);
+      const result = await processLocationQuery(query);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
       next(error);
     }
   });
