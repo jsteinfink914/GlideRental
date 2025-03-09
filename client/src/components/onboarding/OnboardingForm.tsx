@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useLocation } from "wouter";
 import { insertUserPreferencesSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -117,6 +118,7 @@ const OnboardingForm = () => {
     reValidateMode: "onSubmit"
   });
 
+  const [location, setLocation] = useLocation();
   const onboardingMutation = useMutation({
     mutationFn: async (data: OnboardingFormValues) => {
       const res = await apiRequest("POST", "/api/user-preferences", data);
@@ -129,6 +131,8 @@ const OnboardingForm = () => {
         description: "Your preferences have been saved.",
         variant: "default"
       });
+      // Redirect to home page after successful submission
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -136,6 +140,7 @@ const OnboardingForm = () => {
         description: error.message,
         variant: "destructive"
       });
+      console.error("Error submitting preferences:", error);
     }
   });
 
