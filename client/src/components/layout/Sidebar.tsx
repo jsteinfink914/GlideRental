@@ -18,10 +18,9 @@ export default function Sidebar() {
       ]
     : [
         { href: "/search", label: "Search", icon: "search" },
-        { href: "/feed", label: "Feed", icon: "dynamic_feed" },
-        { href: "/tools", label: "Tools", icon: "view_list" },
-        { href: "/neighborhood", label: "Neighborhood", icon: "location_city" },
-        { href: "/roommates", label: "Roommates", icon: "people" },
+        { href: "/for-you", label: "For You", icon: "recommend" },
+        { href: "/saved", label: "Saved", icon: "bookmarks" },
+        { href: "/search-tools", label: "Tools", icon: "view_list" },
         { href: "/messages", label: "Messages", icon: "chat" },
         { href: "/portal", label: "Portal", icon: "home" },
         { href: "/payments", label: "Payments", icon: "payments" },

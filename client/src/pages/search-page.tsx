@@ -142,6 +142,38 @@ export default function SearchPage() {
 
         <main className="flex-1 lg:pl-64 pb-16 md:pb-0">
           <div className="container mx-auto px-4 py-6">
+            {/* Main Navigation Tabs */}
+            <div className="flex mb-6 border-b border-gray-200">
+              <a 
+                href="/search"
+                className="flex items-center px-6 py-3 font-medium text-primary border-b-2 border-primary"
+              >
+                <span className="material-icons mr-2">search</span>
+                Search
+              </a>
+              <a 
+                href="/for-you"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">recommend</span>
+                For You
+              </a>
+              <a 
+                href="/saved"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">bookmarks</span>
+                Saved
+              </a>
+              <a 
+                href="/search-tools"
+                className="flex items-center px-6 py-3 font-medium text-text-medium hover:text-primary"
+              >
+                <span className="material-icons mr-2">view_list</span>
+                Tools
+              </a>
+            </div>
+            
             {/* Page Title */}
             <div className="mb-6">
               <h1 className="text-3xl font-heading font-bold text-text-dark">Find your next home</h1>

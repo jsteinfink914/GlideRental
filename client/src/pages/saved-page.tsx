@@ -1,9 +1,15 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import RoommateLink from "@/components/roommates/RoommateLink";
-import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { User, Property } from "@shared/schema";
+import Navigation from "@/components/layout/Navigation";
+import MobileNavigation from "@/components/layout/MobileNavigation";
+import Sidebar from "@/components/layout/Sidebar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PropertyGrid from "@/components/rentals/PropertyGrid";
 import { getQueryFn } from "@/lib/queryClient";
-import { User } from "@shared/schema";
+import RoommateLink from "@/components/roommates/RoommateLink";
+import { Redirect } from "wouter";
 import { 
   Card, 
   CardContent, 
@@ -18,20 +24,20 @@ import {
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Home, Settings, Building, Mail, Calendar } from "lucide-react";
-import { useState } from "react";
-import { Redirect } from "wouter";
-import Navigation from "@/components/layout/Navigation";
-import MobileNavigation from "@/components/layout/MobileNavigation";
-import Sidebar from "@/components/layout/Sidebar";
 
-export default function RoommatesPage() {
+export default function SavedPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("management");
+  const [activeTab, setActiveTab] = useState("saved");
 
   // Redirect to onboarding if user hasn't completed it
   if (user && !user.onboardingCompleted) {
     return <Redirect to="/onboarding" />;
   }
+
+  // Fetch user's saved properties
+  const { data: savedProperties, isLoading: isLoadingSaved } = useQuery<{savedId: number; property: Property}[]>({
+    queryKey: ['/api/saved-properties'],
+  });
 
   // Get roommates
   const { data: roommates, isLoading: roommatesLoading } = useQuery<User[], Error>({
@@ -89,50 +95,68 @@ export default function RoommatesPage() {
       
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
               <TabsList className="grid grid-cols-2 md:w-[400px] mb-6">
-                <TabsTrigger value="management">
-                  <Users className="h-4 w-4 mr-2" />
-                  Management
+                <TabsTrigger value="saved">
+                  <span className="material-icons mr-2 text-sm">bookmark</span>
+                  Saved Properties
                 </TabsTrigger>
-                <TabsTrigger value="dashboard">
-                  <Home className="h-4 w-4 mr-2" />
-                  Dashboard
+                <TabsTrigger value="roommates">
+                  <Users className="h-4 w-4 mr-2" />
+                  Roommates
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="management">
-                <RoommateLink />
+              <TabsContent value="saved">
+                <div className="mb-6">
+                  <h2 className="text-xl font-heading font-semibold text-text-dark mb-4">
+                    Saved Properties
+                  </h2>
+                  <p className="text-text-medium mb-6">
+                    Properties you've saved for later
+                  </p>
+                  
+                  {isLoadingSaved ? (
+                    <PropertyGrid isLoading={true} />
+                  ) : savedProperties?.length ? (
+                    <PropertyGrid savedProperties={savedProperties} />
+                  ) : (
+                    <div className="text-center bg-secondary rounded-xl p-8">
+                      <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
+                        <span className="material-icons text-white text-2xl">favorite</span>
+                      </div>
+                      <h3 className="font-heading font-medium text-lg text-text-dark mb-2">
+                        No saved properties yet
+                      </h3>
+                      <p className="text-text-medium mb-4">
+                        Save properties you like and they will appear here
+                      </p>
+                      <Button 
+                        className="bg-primary hover:bg-primary-light"
+                        onClick={() => window.location.href = "/search"}
+                      >
+                        Start Searching
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
               
-              <TabsContent value="dashboard">
+              <TabsContent value="roommates">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-2xl font-heading">Roommate Dashboard</CardTitle>
+                    <CardTitle className="text-2xl font-heading">Roommate Management</CardTitle>
                     <CardDescription>
-                      View and manage your living situation with roommates
+                      Link with roommates to coordinate your apartment search
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <RoommateLink />
+                    
                     {roommatesLoading ? (
-                      <div className="flex justify-center py-8">
+                      <div className="flex justify-center py-8 mt-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </div>
-                    ) : !roommates || roommates.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-xl font-medium mb-2">No Roommates Connected</h3>
-                        <p className="text-muted-foreground mb-4">
-                          You haven't linked with any roommates yet. Link with roommates to
-                          enable collaborative features.
-                        </p>
-                        <Button 
-                          onClick={() => setActiveTab("management")}
-                          className="bg-primary hover:bg-primary-light"
-                        >
-                          Link Roommates
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-8">
+                    ) : roommates && roommates.length > 0 ? (
+                      <div className="mt-8 space-y-8">
                         <div>
                           <h3 className="font-medium text-lg mb-4">Your Roommate Group</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -164,7 +188,7 @@ export default function RoommatesPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <Card>
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between">
@@ -232,7 +256,7 @@ export default function RoommatesPage() {
                           </Card>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </CardContent>
                 </Card>
               </TabsContent>
