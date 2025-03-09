@@ -35,16 +35,13 @@ interface UserPreferences {
 
 // Convert a Property to a ListingWithPOIs
 function propertyToListing(property: Property): ListingWithPOIs {
-  // Get latitude and longitude from geocoded address if needed
-  // In a real application, these would likely be stored with the property
-  // For now, we'll add mock coordinates for NYC area if they don't exist
-  const getRandomCoord = (base: number, range: number) => base + (Math.random() * range - range/2);
-  
+  // Use the property's actual coordinates if available (which they now are)
+  // Fall back to default NYC coordinates if not available
   return {
     id: property.id,
     address: property.address,
-    lat: 40.7128 + getRandomCoord(40.7128, 0.1), // Mock NYC coordinates
-    lon: -74.0060 + getRandomCoord(-74.0060, 0.1), // Mock NYC coordinates
+    lat: property.latitude || 40.7128, // Use property's latitude if available
+    lon: property.longitude || -74.0060, // Use property's longitude if available
     price: property.rent,
     beds: property.bedrooms,
     baths: property.bathrooms,

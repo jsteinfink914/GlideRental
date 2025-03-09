@@ -161,11 +161,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId
         });
       } else {
+        // Create new preferences with required fields and POI preferences
         preferences = await storage.createUserPreferences({
           userId,
-          gym,
-          grocery,
-          poiTypes
+          budget: { min: 0, max: 5000 },
+          moveInDate: new Date().toISOString(),
+          bedroomsMin: 0,
+          bedroomsMax: 5,
+          bathroomsMin: 1,
+          gym: gym || '',
+          grocery: grocery || '',
+          poiTypes: poiTypes || []
         });
       }
       
