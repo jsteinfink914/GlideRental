@@ -147,9 +147,9 @@ const OnboardingForm = () => {
         variant: "default"
       });
       
-      // Important: Force navigation to the homepage
-      console.log("Redirecting to home page...");
-      window.location.href = "/";
+      // Important: Force navigation to the search page
+      console.log("Redirecting to search page...");
+      window.location.href = "/search";
     },
     onError: (error: Error) => {
       toast({
