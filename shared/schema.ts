@@ -72,6 +72,8 @@ export const properties = pgTable("properties", {
   petFriendly: boolean("pet_friendly").default(false),
   rating: real("rating"),
   noFee: boolean("no_fee").default(false),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   images: text("images").array(),
   amenities: text("amenities").array(),
   embedding: json("embedding").$type<number[]>(),
@@ -227,6 +229,10 @@ export const userPreferences = pgTable("user_preferences", {
     personality: string, // introverted, extroverted, mixed
   }>(),
   dealBreakers: text("deal_breakers").array(),
+  // POI preferences
+  gym: text("gym").default(''),
+  grocery: text("grocery").default(''),
+  poiTypes: text("poi_types").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
