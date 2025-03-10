@@ -15,6 +15,16 @@ import AIChatAssistant from "@/components/rentals/AIChatAssistant";
 import { useMap } from "@/hooks/use-map";
 import { Button } from "@/components/ui/button";
 
+// Global state to track search terms across components
+export interface SearchPOI {
+  term: string;
+  count: number;
+  timestamp: number;
+}
+
+// Global variable to store recent search terms that can be accessed by map components
+export const recentSearchPOIs: SearchPOI[] = [];
+
 // Number of properties per page
 const ITEMS_PER_PAGE = 6;
 
@@ -121,6 +131,40 @@ export default function SearchPage() {
   );
 
   const handleFilterChange = (newFilters: FilterValues) => {
+    // If there's a search term, add it to the recentSearchPOIs
+    if (newFilters.searchTerm && newFilters.searchTerm.trim() !== '' && 
+        (!filters.searchTerm || filters.searchTerm !== newFilters.searchTerm)) {
+      const searchTerm = newFilters.searchTerm.trim();
+      
+      // Update existing or add new
+      const existingIndex = recentSearchPOIs.findIndex(poi => 
+        poi.term.toLowerCase() === searchTerm.toLowerCase());
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        recentSearchPOIs[existingIndex] = {
+          ...recentSearchPOIs[existingIndex],
+          count: recentSearchPOIs[existingIndex].count + 1,
+          timestamp: Date.now()
+        };
+      } else {
+        // Add new entry
+        recentSearchPOIs.push({
+          term: searchTerm,
+          count: 1,
+          timestamp: Date.now()
+        });
+        
+        // Keep only the most recent 5 search terms
+        if (recentSearchPOIs.length > 5) {
+          recentSearchPOIs.sort((a, b) => b.timestamp - a.timestamp);
+          recentSearchPOIs.pop(); // Remove the oldest
+        }
+      }
+      
+      console.log("Updated search POIs:", recentSearchPOIs);
+    }
+    
     setFilters(newFilters);
   };
 

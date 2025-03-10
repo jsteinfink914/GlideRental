@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, MapPin, Home, Navigation, Search, X, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { recentSearchPOIs, SearchPOI } from '@/pages/search-page';
 
 interface MapComparisonProps {
   properties: Property[];
@@ -356,6 +357,76 @@ export function MapComparison({ properties }: MapComparisonProps) {
         
         buttonsTable.appendChild(row3);
         
+        // Add recent search terms as additional buttons
+        if (recentSearchPOIs.length > 0) {
+          // Add a separator
+          const separatorRow = document.createElement('tr');
+          const separatorCell = document.createElement('td');
+          separatorCell.colSpan = 2;
+          separatorCell.style.paddingTop = '8px';
+          separatorCell.style.paddingBottom = '4px';
+          
+          const separator = document.createElement('div');
+          separator.style.borderTop = '1px solid #ddd';
+          separator.style.marginBottom = '4px';
+          separatorCell.appendChild(separator);
+          
+          const searchTitle = document.createElement('div');
+          searchTitle.style.fontSize = '12px';
+          searchTitle.style.fontWeight = 'bold';
+          searchTitle.style.color = '#666';
+          searchTitle.textContent = 'Your recent searches:';
+          separatorCell.appendChild(searchTitle);
+          
+          separatorRow.appendChild(separatorCell);
+          buttonsTable.appendChild(separatorRow);
+          
+          // Create rows for search terms (2 per row)
+          let searchRow;
+          let cellIndex = 0;
+          
+          // Sort by most recent first
+          const sortedSearches = [...recentSearchPOIs].sort((a, b) => b.timestamp - a.timestamp);
+          
+          sortedSearches.forEach((searchItem, index) => {
+            if (index % 2 === 0) {
+              searchRow = document.createElement('tr');
+              buttonsTable.appendChild(searchRow);
+              cellIndex = 0;
+            }
+            
+            const searchCell = document.createElement('td');
+            const searchBtn = document.createElement('button');
+            searchBtn.textContent = searchItem.term;
+            searchBtn.style.width = '100%';
+            searchBtn.style.padding = '6px';
+            searchBtn.style.borderRadius = '4px';
+            searchBtn.style.border = '1px solid #dbd'; 
+            searchBtn.style.background = '#f0f7ff'; // Light blue for search terms
+            searchBtn.style.fontSize = '12px';
+            searchBtn.style.cursor = 'pointer';
+            searchBtn.id = `search-btn-${property.id}-${index}`;
+            
+            // Add data attributes
+            searchBtn.setAttribute('data-property-id', property.id.toString());
+            searchBtn.setAttribute('data-poi-type', 'search_term');
+            searchBtn.setAttribute('data-search-term', searchItem.term);
+            searchBtn.classList.add('poi-button');
+            
+            searchCell.appendChild(searchBtn);
+            searchRow?.appendChild(searchCell);
+            
+            cellIndex++;
+          });
+          
+          // If we have an odd number and ended with only one cell in the row,
+          // add an empty cell to balance the layout
+          if (cellIndex === 1 && searchRow) {
+            const emptyCell = document.createElement('td');
+            searchRow.appendChild(emptyCell);
+          }
+        }
+        
         // Add data attributes to store the property ID and POI type
         restaurantBtn.setAttribute('data-property-id', property.id.toString());
         restaurantBtn.setAttribute('data-poi-type', 'restaurant');
@@ -392,8 +463,50 @@ export function MapComparison({ properties }: MapComparisonProps) {
             return;
           }
           
-          // Call the searchNearbyPOIs function
-          searchNearbyPOIs(property, poiType);
+          // If this is a search term button, get the search term and use text search
+          if (poiType === 'search_term') {
+            const searchTerm = button.getAttribute('data-search-term') || '';
+            console.log(`Searching for term: ${searchTerm} near property ${propertyId}`);
+            
+            // Create a custom type for the search term
+            const searchTermType = `search:${searchTerm}`;
+            const resultsContainer = document.getElementById(`poi-results-${property.id}`);
+            if (resultsContainer) {
+              resultsContainer.innerHTML = `<p style="margin: 0; color: #666;">Searching for "${searchTerm}"...</p>`;
+            }
+            
+            // Use textSearch instead of nearbySearch for search terms
+            if (googleMap && property.latitude && property.longitude) {
+              try {
+                const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+                const searchService = new google.maps.places.PlacesService(googleMap);
+                
+                searchService.textSearch({
+                  query: searchTerm,
+                  location: propertyLocation,
+                  radius: 2000 // 2km
+                }, (results, status) => {
+                  if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    // Now process these results similarly to nearbySearch
+                    // We'll use a special "search_result" type for these markers
+                    handleSearchResults(property, searchTerm, results);
+                  } else {
+                    if (resultsContainer) {
+                      resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">No "${searchTerm}" found nearby</p>`;
+                    }
+                  }
+                });
+              } catch (error) {
+                console.error("Error during text search:", error);
+                if (resultsContainer) {
+                  resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">Error searching for "${searchTerm}"</p>`;
+                }
+              }
+            }
+          } else {
+            // Call the standard POI search function for regular POI types
+            searchNearbyPOIs(property, poiType);
+          }
         };
         
         // Add event listeners
