@@ -210,7 +210,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return distA - distB;
       });
       
-      res.json({ places: sortedPlaces });
+      // Only return the closest place (the first one after sorting)
+      const closestPlace = sortedPlaces.length > 0 ? [sortedPlaces[0]] : [];
+      
+      res.json({ places: closestPlace });
     } catch (error) {
       console.error('Error fetching nearby places:', error);
       res.status(500).json({ error: "Failed to fetch nearby places" });
