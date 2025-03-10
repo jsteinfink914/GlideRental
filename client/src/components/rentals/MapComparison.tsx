@@ -509,30 +509,19 @@ export function MapComparison({ properties }: MapComparisonProps) {
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
     // Debug to see what's happening
     console.log("Searching for POIs with:", { 
-      placesServiceExists: !!placesService, 
+      hasMap: !!googleMap,
       hasLatitude: !!property.latitude, 
       hasLongitude: !!property.longitude 
     });
     
-    // We need to check if both services are available
-    if (!placesService || !property.latitude || !property.longitude) {
-      console.error("Cannot search POIs - missing required services or property location");
+    // We need to check coordinates and map
+    if (!googleMap || !property.latitude || !property.longitude) {
+      console.error("Cannot search POIs - missing map or property location");
       return;
     }
     
     // Get the current map - we'll use this for markers
     const currentMap = googleMap;
-    
-    // Create a backup PlacesService if needed
-    if (!placesService && currentMap) {
-      console.log("Recreating Places service on demand");
-      try {
-        const newPlacesService = new google.maps.places.PlacesService(currentMap);
-        setPlacesService(newPlacesService);
-      } catch (err) {
-        console.error("Failed to create backup Places service:", err);
-      }
-    }
     
     console.log(`Searching for ${poiType} near property ${property.id}`);
     
@@ -588,20 +577,23 @@ export function MapComparison({ properties }: MapComparisonProps) {
       
       const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
       
-      // Make sure we have an active places service
-      const activeService = placesService || (googleMap ? new google.maps.places.PlacesService(googleMap) : null);
-      
-      if (!activeService) {
-        console.error("Places service could not be created or accessed");
+      // Create a new places service directly from current map every time
+      // This ensures we're working with a fresh service
+      if (!googleMap) {
+        console.error("Map isn't available");
         if (resultsContainer) {
-          resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">Error: Maps services unavailable</p>`;
+          resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">Error: Map not available</p>`;
         }
         setSearchingPOIs(false);
         return;
       }
       
+      // Always create a new service that we know will work with the current map
+      const activeService = new google.maps.places.PlacesService(googleMap);
+      console.log("Created a fresh Places service");
+      
       // Perform a nearby search with specific error handling
-      console.log("Starting nearby search with active service");
+      console.log("Starting nearby search");
       activeService.nearbySearch(
         {
           location: propertyLocation,
