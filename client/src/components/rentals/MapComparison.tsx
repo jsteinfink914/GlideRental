@@ -345,116 +345,52 @@ export function MapComparison({ properties }: MapComparisonProps) {
         
         buttonsTable.appendChild(row3);
         
-        // Create a closure to keep reference to the map and services
-        const createClickHandler = (poiType: string) => {
-          return () => {
-            // Get the current map and places service from the infoWindow
-            if (!map || !placesService) {
-              console.error("Map services not initialized. Try again in a moment.");
-              return;
-            }
-            
-            console.log(`Searching for ${poiType} near property ${property.id}`);
-            
-            // Use map and placesService from the parent scope
-            const propertyLocation = new google.maps.LatLng(
-              property.latitude ?? 0, 
-              property.longitude ?? 0
-            );
-            
-            if (!property.latitude || !property.longitude) {
-              console.error("Property has no valid coordinates");
-              return;
-            }
-            
-            // Use the global placesService and map instead of local function variables
-            placesService.nearbySearch(
-              {
-                location: propertyLocation,
-                radius: 2000,
-                type: poiType
-              },
-              (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                  console.log(`Found ${results.length} ${poiType}s near property`);
-                  
-                  // Get top 3 results
-                  const topResults = results.slice(0, 3);
-                  
-                  // Keep existing POIs but clear markers of this type
-                  setPois(prevPois => {
-                    // Only remove markers of the same type
-                    prevPois
-                      .filter(poi => poi.type === poiType)
-                      .forEach(poi => {
-                        if (poi.marker) {
-                          poi.marker.setMap(null);
-                        }
-                      });
-                    
-                    // Keep all POIs except those of the current type
-                    return prevPois.filter(poi => poi.type !== poiType);
-                  });
-                  
-                  // Create POI markers
-                  const newPOIs: POI[] = [];
-                  
-                  // Process results
-                  topResults.forEach((place, index) => {
-                    if (place.geometry && place.geometry.location) {
-                      const getMarkerColor = (type: string) => {
-                        const colorMap: Record<string, string> = {
-                          restaurant: 'red-dot.png',
-                          grocery_or_supermarket: 'green-dot.png',
-                          gym: 'orange-dot.png',
-                          school: 'purple-dot.png',
-                          park: 'yellow-dot.png'
-                        };
-                        return colorMap[type] || 'blue-dot.png';
-                      };
-                      
-                      // Create POI object
-                      const poi: POI = {
-                        name: place.name || `${poiType} ${index + 1}`,
-                        location: place.geometry.location,
-                        address: place.vicinity || '',
-                        placeId: place.place_id || '',
-                        type: poiType
-                      };
-                      
-                      // Create marker for POI
-                      const marker = new google.maps.Marker({
-                        position: place.geometry.location,
-                        map: map,
-                        title: place.name,
-                        icon: {
-                          url: `https://maps.google.com/mapfiles/ms/icons/${getMarkerColor(poiType)}`,
-                          scaledSize: new google.maps.Size(28, 28)
-                        }
-                      });
-                      
-                      // Store marker with POI
-                      poi.marker = marker;
-                      newPOIs.push(poi);
-                    }
-                  });
-                  
-                  // Update state with new POIs
-                  setPois(prevPois => [...prevPois, ...newPOIs]);
-                } else {
-                  console.error(`Error finding ${poiType}s: ${status}`);
-                }
-              }
-            );
-          };
+        // Add data attributes to store the property ID and POI type
+        restaurantBtn.setAttribute('data-property-id', property.id.toString());
+        restaurantBtn.setAttribute('data-poi-type', 'restaurant');
+        restaurantBtn.classList.add('poi-button');
+        
+        groceryBtn.setAttribute('data-property-id', property.id.toString());
+        groceryBtn.setAttribute('data-poi-type', 'grocery_or_supermarket'); 
+        groceryBtn.classList.add('poi-button');
+        
+        gymBtn.setAttribute('data-property-id', property.id.toString());
+        gymBtn.setAttribute('data-poi-type', 'gym');
+        gymBtn.classList.add('poi-button');
+        
+        schoolBtn.setAttribute('data-property-id', property.id.toString());
+        schoolBtn.setAttribute('data-poi-type', 'school');
+        schoolBtn.classList.add('poi-button');
+        
+        parkBtn.setAttribute('data-property-id', property.id.toString());
+        parkBtn.setAttribute('data-poi-type', 'park');
+        parkBtn.classList.add('poi-button');
+        
+        // Use DOM events instead of direct button click handlers
+        const handlePOIButtonClick = (e: Event) => {
+          const button = e.currentTarget as HTMLElement;
+          const propertyId = parseInt(button.getAttribute('data-property-id') || '0', 10);
+          const poiType = button.getAttribute('data-poi-type') || '';
+          
+          console.log(`Button clicked: ${poiType} for property ${propertyId}`);
+          
+          // Find the property
+          const property = properties.find(p => p.id === propertyId);
+          if (!property) {
+            console.error(`Property ${propertyId} not found`);
+            return;
+          }
+          
+          // Call the searchNearbyPOIs function
+          searchNearbyPOIs(property, poiType);
         };
         
-        // Add direct click handlers with the closure
-        restaurantBtn.onclick = createClickHandler('restaurant');
-        groceryBtn.onclick = createClickHandler('grocery_or_supermarket');
-        gymBtn.onclick = createClickHandler('gym');
-        schoolBtn.onclick = createClickHandler('school');
-        parkBtn.onclick = createClickHandler('park');
+        // Add event listeners
+        restaurantBtn.addEventListener('click', handlePOIButtonClick);
+        groceryBtn.addEventListener('click', handlePOIButtonClick);
+        gymBtn.addEventListener('click', handlePOIButtonClick);
+        schoolBtn.addEventListener('click', handlePOIButtonClick);
+        parkBtn.addEventListener('click', handlePOIButtonClick);
         
         poiSection.appendChild(buttonsTable);
         
@@ -560,10 +496,14 @@ export function MapComparison({ properties }: MapComparisonProps) {
   
   // Function to search for POIs near a property
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
-    if (!placesService || !googleMap || !property.latitude || !property.longitude) {
+    // We need to check if both services are available
+    if (!placesService || !property.latitude || !property.longitude) {
       console.error("Cannot search POIs - missing required services or property location");
       return;
     }
+    
+    // Get the current map - we'll use this for markers
+    const currentMap = googleMap;
     
     console.log(`Searching for ${poiType} near property ${property.id}`);
     
@@ -662,7 +602,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
                 
                 const marker = new google.maps.Marker({
                   position: place.geometry.location,
-                  map: googleMap,
+                  map: currentMap,
                   title: place.name,
                   icon: {
                     url: `https://maps.google.com/mapfiles/ms/icons/${getMarkerColor(poiType)}`,
@@ -690,7 +630,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
                   }
                   
                   // Open this info window
-                  infoWindow.open(googleMap, marker);
+                  infoWindow.open(currentMap, marker);
                   setActiveInfoWindow(infoWindow);
                   
                   // Calculate route to this POI
