@@ -10,51 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// This component displays property locations using colored circles instead of Google Maps
-// to avoid DOM errors and rendering issues
-function StaticPropertyComparison({ properties }: { properties: Property[] }) {
-  // Colors for different properties
-  const colors = ['#4CAF50', '#2196F3', '#F44336'];
-  
-  return (
-    <div className="w-full">
-      <div className="grid gap-4">
-        {properties.map((property, index) => (
-          <div key={property.id} className="border rounded-lg p-4 shadow-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: colors[index % colors.length] }}
-              ></div>
-              <h3 className="font-medium text-base">{property.title}</h3>
-            </div>
-            <div className="pl-7">
-              <p className="text-sm text-muted-foreground mb-1">{property.address}</p>
-              <p className="text-sm mb-1">
-                <span className="text-muted-foreground">Price:</span> ${property.rent.toLocaleString()}/month
-              </p>
-              <p className="text-sm mb-1">
-                <span className="text-muted-foreground">Size:</span> {property.squareFeet} sq ft
-              </p>
-              <p className="text-sm">
-                <span className="text-muted-foreground">Bedrooms/Bathrooms:</span> {property.bedrooms}b / {property.bathrooms}ba
-              </p>
-              
-              {property.latitude && property.longitude ? (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <p>Location: {property.neighborhood}</p>
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">No location data available</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { MapComparison } from "@/components/rentals/MapComparison";
 
 export default function ToolsPage() {
   const { user } = useAuth();
@@ -254,15 +210,7 @@ export default function ToolsPage() {
                         </CardHeader>
                         <CardContent>
                           {propertiesForComparison.length >= 2 ? (
-                            <div>
-                              <p className="mb-4 text-center">Property Location Comparison:</p>
-                              {/* Display the static property comparison */}
-                              <StaticPropertyComparison properties={propertiesForComparison} />
-                              
-                              <div className="mt-4 text-center text-sm text-muted-foreground">
-                                <p>Static comparison view - color dots represent different properties</p>
-                              </div>
-                            </div>
+                            <MapComparison properties={propertiesForComparison} />
                           ) : (
                             <div className="text-center py-6">
                               <p className="mb-3">Please select at least 2 properties to compare routes and distances.</p>
