@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Property } from "@shared/schema";
@@ -10,8 +10,156 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// Temporarily disabled due to DOM errors
-// import { CompareMap } from "@/components/rentals/CompareMap";
+import { Loader2 } from "lucide-react";
+import { loadGoogleMaps } from '@/lib/google-maps-loader';
+
+// A simple map component that renders a Google Map with property markers
+function SimplePropertyMap({ properties }: { properties: Property[] }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Initialize the map
+    const initMap = async () => {
+      try {
+        if (!mapRef.current) return;
+        
+        await loadGoogleMaps();
+        
+        if (!isMounted) return;
+        
+        if (typeof window.google === 'undefined') {
+          setError("Failed to load Google Maps API");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create a bounds object to center the map
+        const bounds = new window.google.maps.LatLngBounds();
+        let hasValidCoords = false;
+        
+        // Add property locations to bounds
+        properties.forEach(property => {
+          if (property.latitude && property.longitude) {
+            bounds.extend(new window.google.maps.LatLng(property.latitude, property.longitude));
+            hasValidCoords = true;
+          }
+        });
+        
+        if (!hasValidCoords) {
+          // Default to NYC if no valid coordinates
+          bounds.extend(new window.google.maps.LatLng(40.7128, -74.0060));
+        }
+        
+        // Create the map
+        const map = new window.google.maps.Map(mapRef.current, {
+          center: bounds.getCenter(),
+          zoom: 12,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
+        
+        // Add property markers
+        properties.forEach((property, index) => {
+          if (!property.latitude || !property.longitude) return;
+          
+          // Choose a different color for each marker
+          const colors = ['#4CAF50', '#2196F3', '#F44336'];
+          const color = colors[index % colors.length];
+          
+          // Create a marker
+          const marker = new window.google.maps.Marker({
+            position: { lat: property.latitude, lng: property.longitude },
+            map,
+            title: property.title || 'Property',
+            label: {
+              text: (index + 1).toString(),
+              color: 'white'
+            },
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: color,
+              fillOpacity: 1,
+              strokeWeight: 0,
+              scale: 10
+            }
+          });
+          
+          // Add info window
+          const infoWindow = new window.google.maps.InfoWindow({
+            content: `
+              <div style="padding: 10px;">
+                <h3 style="font-weight: bold; margin-bottom: 5px;">${property.title || 'Property'}</h3>
+                <p>${property.address || ''}</p>
+                <p>$${property.rent.toLocaleString()}/month</p>
+              </div>
+            `
+          });
+          
+          // Show info window on click
+          marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+          });
+        });
+        
+        // Fit map to bounds
+        if (hasValidCoords) {
+          map.fitBounds(bounds);
+          
+          // Add some padding
+          const listener = window.google.maps.event.addListenerOnce(map, 'idle', () => {
+            if (properties.length === 1) {
+              map.setZoom(15);
+            }
+          });
+        }
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error initializing map:', err);
+        setError("Failed to initialize map");
+        setIsLoading(false);
+      }
+    };
+    
+    initMap();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [properties]);
+  
+  return (
+    <div className="w-full">
+      <div 
+        ref={mapRef}
+        className="w-full h-[400px] rounded-md bg-muted/20 relative"
+      >
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+              <span>Loading map...</span>
+            </div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="flex flex-col items-center text-center p-4">
+              <p className="text-destructive font-medium mb-2">Error: {error}</p>
+              <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ToolsPage() {
   const { user } = useAuth();
@@ -211,19 +359,14 @@ export default function ToolsPage() {
                         </CardHeader>
                         <CardContent>
                           {propertiesForComparison.length >= 2 ? (
-                            <div className="text-center py-4">
-                              <p className="mb-4">The map comparison feature is available with {propertiesForComparison.length} properties selected.</p>
-                              <Button 
-                                onClick={() => {
-                                  // We're avoiding directly using the CompareMap component 
-                                  // due to DOM errors. Redirecting to a dedicated page would
-                                  // be a better approach in a production environment.
-                                  alert("This feature is currently under maintenance. Please try again later.");
-                                }}
-                                className="mx-auto"
-                              >
-                                View Map Comparison
-                              </Button>
+                            <div>
+                              <p className="mb-4 text-center">Properties shown on map:</p>
+                              {/* Display the simple map component */}
+                              <SimplePropertyMap properties={propertiesForComparison} />
+                              
+                              <div className="mt-4 text-center text-sm text-muted-foreground">
+                                <p>Click on markers to see property details</p>
+                              </div>
                             </div>
                           ) : (
                             <div className="text-center py-6">
