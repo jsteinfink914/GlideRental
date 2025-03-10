@@ -978,13 +978,56 @@ export function MapComparison({ properties }: MapComparisonProps) {
     // Debug to see what's happening
     console.log("Searching for POIs with:", { 
       hasMap: !!googleMap,
+      mapState: mapView,
       hasLatitude: !!property.latitude, 
-      hasLongitude: !!property.longitude 
+      hasLongitude: !!property.longitude,
+      googleMapsLoaded: googleMapsLoaded
     });
+    
+    // Wait for map to be fully initialized if needed
+    if (!googleMap && googleMapsLoaded && mapContainerRef.current && mapView === 'map') {
+      console.log("Map not initialized but Google Maps is loaded. Initializing map...");
+      try {
+        // Initialize map if it's not already done
+        const bounds = new google.maps.LatLngBounds();
+        if (property.latitude && property.longitude) {
+          bounds.extend(new google.maps.LatLng(property.latitude, property.longitude));
+        } else {
+          bounds.extend(new google.maps.LatLng(40.7128, -74.0060)); // NYC default
+        }
+        
+        const map = new google.maps.Map(mapContainerRef.current, {
+          center: bounds.getCenter(),
+          zoom: 14,
+          mapTypeControl: false,
+          fullscreenControl: true,
+          streetViewControl: false,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+        });
+        
+        setGoogleMap(map);
+        
+        // Initialize services
+        setPlacesService(new google.maps.places.PlacesService(map));
+        setDirectionsService(new google.maps.DirectionsService());
+        
+        // Need to return here - the search will be performed on the next render after state updates
+        console.log("Map initialized, but need to wait for state updates. Try search again.");
+        return;
+      } catch (err) {
+        console.error("Error initializing map:", err);
+      }
+    }
     
     // We need to check coordinates and map
     if (!googleMap || !property.latitude || !property.longitude) {
       console.error("Cannot search POIs - missing map or property location");
+      const resultsContainer = document.getElementById(`poi-results-${property.id}`);
+      if (resultsContainer) {
+        resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">
+          ${!googleMap ? 'Map not available. Try switching to map view first.' : 'Property location information is missing.'}
+        </p>`;
+      }
       return;
     }
     
