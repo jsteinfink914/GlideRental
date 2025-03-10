@@ -1187,7 +1187,28 @@ export function MapComparison({ properties }: MapComparisonProps) {
                       return [];
                     });
                     
-                    // Process the results
+                    // First ensure the property marker is shown (or re-shown)
+                    const propertyMarker = new google.maps.Marker({
+                      position: { lat: property.latitude!, lng: property.longitude! },
+                      map: map,
+                      title: property.title || 'Property',
+                      label: {
+                        text: '🏠', // Using home emoji for the property
+                        color: 'white'
+                      },
+                      zIndex: 1000, // Higher zIndex to keep on top
+                      // Use circle icon for property 
+                      icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#4285F4', // Google blue color
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: '#ffffff',
+                        scale: 12
+                      }
+                    });
+                    
+                    // Process the POI results
                     topResults.forEach((place, index) => {
                       if (place.geometry && place.geometry.location) {
                         // Create POI object
@@ -1476,6 +1497,28 @@ export function MapComparison({ properties }: MapComparisonProps) {
             // Create POI markers
             const newPOIs: POI[] = [];
             
+            // First ensure the property marker is shown (or re-shown)
+            // Create a property marker that will always be visible
+            const propertyMarker = new google.maps.Marker({
+              position: { lat: property.latitude!, lng: property.longitude! },
+              map: currentMap,
+              title: property.title || 'Property',
+              label: {
+                text: '🏠', // Using home emoji for the property
+                color: 'white'
+              },
+              zIndex: 1000, // Higher zIndex to keep on top
+              // Use circle icon for property 
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: '#4285F4', // Google blue color
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#ffffff',
+                scale: 12
+              }
+            });
+            
             // Update the results container with the places
             let resultsHTML = '';
             
@@ -1725,6 +1768,27 @@ export function MapComparison({ properties }: MapComparisonProps) {
       
       // Process results and add markers
       const newPOIs: POI[] = [];
+      
+      // First ensure the property marker is shown (or re-shown)
+      const propertyMarker = new google.maps.Marker({
+        position: { lat: property.latitude!, lng: property.longitude! },
+        map: map,
+        title: property.title || 'Property',
+        label: {
+          text: '🏠', // Using home emoji for the property
+          color: 'white'
+        },
+        zIndex: 1000, // Higher zIndex to keep on top
+        // Use circle icon for property 
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: '#4285F4', // Google blue color
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: '#ffffff',
+          scale: 12
+        }
+      });
       
       let resultsHTML = '';
       
@@ -1992,6 +2056,27 @@ export function MapComparison({ properties }: MapComparisonProps) {
             });
             
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              // Add property marker first to ensure it's always visible
+              const propertyMarker = new google.maps.Marker({
+                position: { lat: propertyWithCoords.latitude!, lng: propertyWithCoords.longitude! },
+                map: googleMap,
+                title: propertyWithCoords.title || 'Property',
+                label: {
+                  text: '🏠', // Using home emoji for the property
+                  color: 'white'
+                },
+                zIndex: 1000, // Higher zIndex to keep on top
+                // Use circle icon for property 
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  fillColor: '#4285F4', // Google blue color
+                  fillOpacity: 1,
+                  strokeWeight: 2,
+                  strokeColor: '#ffffff',
+                  scale: 12
+                }
+              });
+            
               // Get top 5 results
               const topResults = results.slice(0, 5);
               
