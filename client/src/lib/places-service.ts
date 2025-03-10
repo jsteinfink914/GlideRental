@@ -94,17 +94,19 @@ export async function findNearestPlace(
 /**
  * Update property with POI info for multiple places
  */
+export interface EnrichedProperty extends Property {
+  nearestGrocery?: POI;
+  nearestGym?: POI;
+  nearestPOIs?: Record<string, POI>;
+}
+
 export async function enrichPropertyWithPOIs(
   property: Property,
   preferredGrocery: string,
   preferredGym: string,
   poiTypes: string[] = []
-): Promise<Property & { 
-  nearestGrocery?: POI;
-  nearestGym?: POI;
-  nearestPOIs?: Record<string, POI>;
-}> {
-  const enrichedProperty = { ...property };
+): Promise<EnrichedProperty> {
+  const enrichedProperty = { ...property } as EnrichedProperty;
   
   // Find nearest grocery store
   if (preferredGrocery) {

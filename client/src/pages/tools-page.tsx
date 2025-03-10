@@ -8,8 +8,9 @@ import Sidebar from "@/components/layout/Sidebar";
 import RentalTabs from "@/components/layout/RentalTabs";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CompareMap } from "@/components/rentals/CompareMap";
 
 export default function ToolsPage() {
   const { user } = useAuth();
@@ -196,6 +197,11 @@ export default function ToolsPage() {
                           </div>
                         </CardContent>
                       </Card>
+                      
+                      {/* Location Comparison Map */}
+                      {propertiesForComparison.length > 0 && (
+                        <CompareMap properties={propertiesForComparison} />
+                      )}
                     </>
                   ) : (
                     <div className="md:col-span-3 text-center py-12 bg-gray-50 rounded-lg">
