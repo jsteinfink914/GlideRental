@@ -35,6 +35,21 @@ const poiTypeOptions: POITypeOption[] = [
 ];
 
 export function CompareMap({ properties }: CompareMapProps) {
+  // Safety check - if fewer than 2 properties, don't render the map
+  if (!properties || properties.length < 2) {
+    return (
+      <Card className="w-full mb-8">
+        <CardHeader>
+          <CardTitle>Compare Routes & Distances</CardTitle>
+          <p className="text-muted-foreground">Please select at least 2 properties to enable comparison</p>
+        </CardHeader>
+        <CardContent className="text-center py-6">
+          <p className="mb-3">This tool requires at least 2 properties to compare routes and distances.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);

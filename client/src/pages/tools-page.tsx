@@ -198,9 +198,22 @@ export default function ToolsPage() {
                         </CardContent>
                       </Card>
                       
-                      {/* Location Comparison Map */}
-                      {propertiesForComparison.length > 0 && (
+                      {/* Location Comparison Map - only show when 2 or more properties are selected */}
+                      {propertiesForComparison.length >= 2 && (
                         <CompareMap properties={propertiesForComparison} />
+                      )}
+                      
+                      {/* Message when only one property is selected */}
+                      {propertiesForComparison.length === 1 && (
+                        <Card className="md:col-span-3 mb-8">
+                          <CardHeader>
+                            <CardTitle>Compare Routes & Distances</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-center py-6">
+                            <p className="mb-3">Please select at least 2 properties to compare routes and distances.</p>
+                            <p className="text-sm text-muted-foreground">The map comparison tool works best with multiple properties.</p>
+                          </CardContent>
+                        </Card>
                       )}
                     </>
                   ) : (
