@@ -71,10 +71,16 @@ export function CompareMap({ properties }: CompareMapProps) {
   
   // Initialize Google Maps
   useEffect(() => {
+    let isMounted = true;
+    
     const initMap = async () => {
       try {
         console.log("Loading Google Maps...");
-        const google = await loadGoogleMaps();
+        // Load Google Maps API
+        await loadGoogleMaps();
+        
+        if (!isMounted) return;
+        
         console.log("Google Maps loaded successfully");
         
         if (!mapRef.current) {
@@ -84,13 +90,19 @@ export function CompareMap({ properties }: CompareMapProps) {
         
         console.log("Initializing map with properties:", properties);
         
+        // Make sure google is defined before proceeding
+        if (typeof window.google === 'undefined') {
+          console.error("Google Maps API not loaded");
+          return;
+        }
+        
         // Calculate center point among all properties
-        const bounds = new google.maps.LatLngBounds();
+        const bounds = new window.google.maps.LatLngBounds();
         let hasValidCoords = false;
         
         properties.forEach(property => {
           if (property.latitude && property.longitude) {
-            bounds.extend(new google.maps.LatLng(property.latitude, property.longitude));
+            bounds.extend(new window.google.maps.LatLng(property.latitude, property.longitude));
             hasValidCoords = true;
           } else {
             console.warn(`Property missing coordinates: ${property.title}`);
@@ -99,11 +111,11 @@ export function CompareMap({ properties }: CompareMapProps) {
         
         if (!hasValidCoords) {
           // Default to NYC if no properties have coordinates
-          bounds.extend(new google.maps.LatLng(40.7128, -74.0060));
+          bounds.extend(new window.google.maps.LatLng(40.7128, -74.0060));
         }
         
         // Create the map
-        const map = new google.maps.Map(mapRef.current, {
+        const map = new window.google.maps.Map(mapRef.current, {
           center: bounds.getCenter(),
           zoom: 13,
           mapTypeControl: false,
@@ -119,12 +131,12 @@ export function CompareMap({ properties }: CompareMapProps) {
           
           const color = propertyColors[property.id] || '#4CAF50';
           
-          const marker = new google.maps.Marker({
+          const marker = new window.google.maps.Marker({
             position: { lat: property.latitude, lng: property.longitude },
             map,
-            title: property.title,
+            title: property.title || 'Property',
             icon: {
-              path: google.maps.SymbolPath.CIRCLE,
+              path: window.google.maps.SymbolPath.CIRCLE,
               fillColor: color,
               fillOpacity: 1,
               strokeWeight: 0,
@@ -132,7 +144,7 @@ export function CompareMap({ properties }: CompareMapProps) {
             }
           });
           
-          const infoWindow = new google.maps.InfoWindow({
+          const infoWindow = new window.google.maps.InfoWindow({
             content: `
               <div class="p-2">
                 <h3 class="font-bold">${property.title || 'Property'}</h3>
@@ -152,18 +164,34 @@ export function CompareMap({ properties }: CompareMapProps) {
         });
         
         // Fit map to bounds and add some padding
-        map.fitBounds(bounds);
+        if (hasValidCoords) {
+          map.fitBounds(bounds);
+          
+          // Add some padding for better visibility
+          const listener = window.google.maps.event.addListenerOnce(map, 'idle', () => {
+            if (properties.length === 1) {
+              map.setZoom(15); // Closer zoom for single property
+            } else {
+              // Keep the auto zoom from fitBounds
+            }
+          });
+        }
         
         // Add event listener to close info windows when clicking on map
         map.addListener('click', closeAllInfoWindows);
         
-        setIsLoadingMap(false);
+        if (isMounted) {
+          setIsLoadingMap(false);
+        }
       } catch (error) {
         console.error('Error initializing map:', error);
-        setIsLoadingMap(false);
+        if (isMounted) {
+          setIsLoadingMap(false);
+        }
       }
     };
     
+    // Only initialize if we have properties to show
     if (properties.length > 0) {
       initMap();
     } else {
@@ -171,6 +199,8 @@ export function CompareMap({ properties }: CompareMapProps) {
     }
     
     return () => {
+      isMounted = false;
+      
       // Clean up on unmount
       markersRef.current.forEach(marker => marker.setMap(null));
       routesRef.current.forEach(route => route.setMap(null));
@@ -243,7 +273,7 @@ export function CompareMap({ properties }: CompareMapProps) {
             const place = data.places[0];
             
             // Create marker for the place
-            const placeMarker = new google.maps.Marker({
+            const placeMarker = new window.google.maps.Marker({
               position: { lat: place.lat, lng: place.lng },
               map: googleMapRef.current,
               title: place.name,
@@ -256,7 +286,7 @@ export function CompareMap({ properties }: CompareMapProps) {
             placeMarker.set('isPlaceMarker', true);
             
             // Add info window for the place
-            const infoWindow = new google.maps.InfoWindow({
+            const infoWindow = new window.google.maps.InfoWindow({
               content: `
                 <div class="p-2">
                   <h3 class="font-bold">${place.name}</h3>
@@ -287,7 +317,7 @@ export function CompareMap({ properties }: CompareMapProps) {
                 console.log(`Route calculated successfully:`, route);
                 
                 // Draw route on map
-                const routePath = new google.maps.Polyline({
+                const routePath = new window.google.maps.Polyline({
                   path: route.route,
                   geodesic: true,
                   strokeColor: propertyColors[property.id] || '#4CAF50',
@@ -302,14 +332,14 @@ export function CompareMap({ properties }: CompareMapProps) {
                 const midpointIndex = Math.floor(route.route.length / 2);
                 const midpoint = route.route[midpointIndex];
                 
-                const timeInfoWindow = new google.maps.InfoWindow({
+                const timeInfoWindow = new window.google.maps.InfoWindow({
                   content: `
                     <div class="p-1 text-center">
                       <p class="font-bold">🚶 ${route.duration}</p>
                     </div>
                   `,
                   position: midpoint,
-                  pixelOffset: new google.maps.Size(0, -15)
+                  pixelOffset: new window.google.maps.Size(0, -15)
                 });
                 
                 timeInfoWindow.open(googleMapRef.current);
