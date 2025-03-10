@@ -9,6 +9,20 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { recentSearchPOIs, SearchPOI } from '@/pages/search-page';
 
+// Helper function to get route color based on POI type
+const getRouteColor = (type: string) => {
+  const colorMap: Record<string, string> = {
+    restaurant: '#F44336', // red
+    grocery_or_supermarket: '#4CAF50', // green
+    gym: '#FF9800', // orange
+    school: '#9C27B0', // purple
+    park: '#FFEB3B', // yellow
+    cafe: '#795548', // brown
+    search_result: '#2196F3', // blue
+  };
+  return colorMap[type] || '#4A90E2'; // default blue
+};
+
 interface MapComparisonProps {
   properties: Property[];
 }
@@ -37,6 +51,8 @@ interface RouteInfo {
 export function MapComparison({ properties }: MapComparisonProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Add a ref to track map initialization to prevent infinite loops
+  const isInitializingMap = useRef<boolean>(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [googleMap, setGoogleMap] = useState<google.maps.Map | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -1042,6 +1058,20 @@ export function MapComparison({ properties }: MapComparisonProps) {
     }
   };
   
+  // Helper function to get route color based on POI type
+  const getRouteColor = (type: string) => {
+    const colorMap: Record<string, string> = {
+      restaurant: '#F44336', // red
+      grocery_or_supermarket: '#4CAF50', // green
+      gym: '#FF9800', // orange
+      school: '#9C27B0', // purple
+      park: '#FFEB3B', // yellow
+      cafe: '#795548', // brown
+      search_result: '#2196F3', // blue
+    };
+    return colorMap[type] || '#4A90E2'; // default blue
+  };
+  
   // Function to search for POIs near a property
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
     // Debug to see what's happening
@@ -1050,20 +1080,34 @@ export function MapComparison({ properties }: MapComparisonProps) {
       mapState: mapView,
       hasLatitude: !!property.latitude, 
       hasLongitude: !!property.longitude,
-      googleMapsLoaded: googleMapsLoaded
+      googleMapsLoaded: googleMapsLoaded,
+      isInitializing: isInitializingMap.current
     });
+    
+    // Prevent infinite recursion
+    if (isInitializingMap.current) {
+      console.log("Map is already being initialized, skipping");
+      return;
+    }
     
     // Make sure we're in map view - if not, switch to it
     if (mapView !== 'map') {
       setMapView('map');
       
-      // Wait a bit for the DOM to update before continuing
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Add a delay to allow the DOM to update
+      setTimeout(() => {
+        searchNearbyPOIs(property, poiType); 
+      }, 300);
+      return;
     }
     
-    // Wait for map to be fully initialized if needed
+    // If no map and Google Maps is loaded, initialize the map
     if (!googleMap && googleMapsLoaded && mapContainerRef.current) {
       console.log("Map not initialized but Google Maps is loaded. Initializing map...");
+      
+      // Set flag to prevent reentry
+      isInitializingMap.current = true;
+      
       try {
         // Initialize map if it's not already done
         const bounds = new google.maps.LatLngBounds();
@@ -1082,34 +1126,253 @@ export function MapComparison({ properties }: MapComparisonProps) {
           mapTypeId: google.maps.MapTypeId.ROADMAP,
         });
         
-        setGoogleMap(map);
-        
         // Initialize services
         const placesService = new google.maps.places.PlacesService(map);
+        const directionsService = new google.maps.DirectionsService();
+        
+        // Update state and wait for changes to take effect
+        setGoogleMap(map);
         setPlacesService(placesService);
-        setDirectionsService(new google.maps.DirectionsService());
+        setDirectionsService(directionsService);
         
-        // Wait for state updates to take effect
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait a bit for state to update, then try search again with a one-time flag
+        console.log("Map is set up, waiting for state updates before continuing search");
         
-        // Continue with POI search once map is set up
-        // We'll just wait for the next render cycle triggered by state updates
-        console.log("Map is set up, POI search will continue after state updates");
-        
-        // Add a delay to ensure all state updates have propagated
-        setTimeout(() => {
-          // Check if coordinates are available
-          if (property.latitude && property.longitude) {
-            // Call the searchNearbyPOIs function again to continue the process
-            searchNearbyPOIs(property, poiType);
-          } else {
-            console.error("Property is missing coordinates");
-          }
-        }, 500);
+        // Use the updatedMap and services directly instead of waiting for state
+        if (property.latitude && property.longitude) {
+          // Small delay to let React render the map
+          setTimeout(() => {
+            isInitializingMap.current = false;
+            
+            // Do the actual search directly
+            if (map && placesService && property.latitude && property.longitude) {
+              const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+              
+              // Perform nearbySearch directly
+              placesService.nearbySearch(
+                {
+                  location: propertyLocation,
+                  radius: 2000,
+                  type: poiType
+                },
+                (results, status) => {
+                  // Handle the POI results directly here instead of a separate function call
+                  if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    console.log(`Found ${results.length} POIs for ${poiType}`);
+                    
+                    // Get top 3 results
+                    const topResults = results.slice(0, 3);
+                    
+                    // Create POI markers
+                    const newPOIs: POI[] = [];
+                    
+                    // Clear any existing POIs of this type
+                    setPois(prevPois => {
+                      prevPois
+                        .filter(poi => poi.type === poiType)
+                        .forEach(poi => {
+                          if (poi.marker) {
+                            poi.marker.setMap(null);
+                          }
+                        });
+                      return prevPois.filter(poi => poi.type !== poiType);
+                    });
+                    
+                    // Clear any existing routes
+                    setRoutes(prevRoutes => {
+                      prevRoutes.forEach(route => {
+                        if (route.route) route.route.setMap(null);
+                        if (route.infoWindow) route.infoWindow.close();
+                      });
+                      return [];
+                    });
+                    
+                    // Process the results
+                    topResults.forEach((place, index) => {
+                      if (place.geometry && place.geometry.location) {
+                        // Create POI object
+                        const poi: POI = {
+                          name: place.name || `${poiType} ${index + 1}`,
+                          location: place.geometry.location,
+                          address: place.vicinity || '',
+                          placeId: place.place_id || `gen-${Date.now()}-${index}`,
+                          type: poiType
+                        };
+                        
+                        // Create marker
+                        const getMarkerColor = (type: string) => {
+                          const colorMap: Record<string, string> = {
+                            restaurant: 'red-dot.png',
+                            grocery_or_supermarket: 'green-dot.png',
+                            gym: 'orange-dot.png',
+                            school: 'purple-dot.png',
+                            park: 'yellow-dot.png'
+                          };
+                          return colorMap[type] || 'blue-dot.png';
+                        };
+                        
+                        const marker = new google.maps.Marker({
+                          position: place.geometry.location,
+                          map: map,
+                          title: place.name,
+                          icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/${getMarkerColor(poiType)}`,
+                            scaledSize: new google.maps.Size(28, 28)
+                          }
+                        });
+                        
+                        // Create info window
+                        const infoWindow = new google.maps.InfoWindow({
+                          content: `
+                            <div style="padding: 5px; max-width: 200px;">
+                              <h3 style="margin: 0; font-size: 14px; margin-bottom: 3px;">${place.name}</h3>
+                              <p style="margin: 0; font-size: 12px; margin-bottom: 3px;">${place.vicinity || ''}</p>
+                              <p style="margin: 0; font-size: 12px;">Rating: ${place.rating ? `${place.rating} ⭐` : 'N/A'}</p>
+                              <p style="margin: 0; font-size: 12px; margin-top: 5px; font-style: italic;">Click for route details</p>
+                            </div>
+                          `
+                        });
+                        
+                        // Add click listener
+                        marker.addListener('click', () => {
+                          if (activeInfoWindow) {
+                            activeInfoWindow.close();
+                          }
+                          infoWindow.open(map, marker);
+                          setActiveInfoWindow(infoWindow);
+                          
+                          // Calculate route
+                          if (directionsService) {
+                            directionsService.route(
+                              {
+                                origin: new google.maps.LatLng(
+                                  property.latitude!,
+                                  property.longitude!
+                                ),
+                                destination: place.geometry!.location,
+                                travelMode: google.maps.TravelMode.DRIVING
+                              },
+                              (result, status) => {
+                                if (status === google.maps.DirectionsStatus.OK && result) {
+                                  // Draw the route
+                                  const directionsRenderer = new google.maps.DirectionsRenderer({
+                                    map: map,
+                                    suppressMarkers: true,
+                                    polylineOptions: {
+                                      strokeColor: getRouteColor(poiType),
+                                      strokeWeight: 5,
+                                      strokeOpacity: 0.7
+                                    }
+                                  });
+                                  directionsRenderer.setDirections(result);
+                                }
+                              }
+                            );
+                          }
+                        });
+                        
+                        poi.marker = marker;
+                        newPOIs.push(poi);
+                      }
+                    });
+                    
+                    // Add new POIs to state
+                    setPois(prevPois => [...prevPois, ...newPOIs]);
+                    
+                    // Fit bounds to show all POIs
+                    if (newPOIs.length > 0) {
+                      const bounds = new google.maps.LatLngBounds();
+                      bounds.extend(new google.maps.LatLng(property.latitude!, property.longitude!));
+                      newPOIs.forEach(poi => bounds.extend(poi.location));
+                      map.fitBounds(bounds);
+                      
+                      // Calculate routes to all POIs
+                      newPOIs.forEach((poi, index) => {
+                        setTimeout(() => {
+                          if (directionsService) {
+                            directionsService.route(
+                              {
+                                origin: new google.maps.LatLng(property.latitude!, property.longitude!),
+                                destination: poi.location,
+                                travelMode: google.maps.TravelMode.DRIVING
+                              },
+                              (result, status) => {
+                                if (status === google.maps.DirectionsStatus.OK && result) {
+                                  const routeColor = getRouteColor(poiType);
+                                  
+                                  // Create renderer
+                                  const directionsRenderer = new google.maps.DirectionsRenderer({
+                                    map: map,
+                                    suppressMarkers: true,
+                                    polylineOptions: {
+                                      strokeColor: routeColor,
+                                      strokeWeight: index === 0 ? 5 : 3,
+                                      strokeOpacity: index === 0 ? 0.8 : 0.5
+                                    }
+                                  });
+                                  directionsRenderer.setDirections(result);
+                                  
+                                  // Get route info
+                                  if (result.routes.length > 0) {
+                                    const leg = result.routes[0].legs[0];
+                                    const distance = leg.distance?.text || 'Unknown';
+                                    const duration = leg.duration?.text || 'Unknown';
+                                    
+                                    // Create label for travel time
+                                    const midpointLat = (property.latitude! + poi.location.lat()) / 2;
+                                    const midpointLng = (property.longitude! + poi.location.lng()) / 2;
+                                    
+                                    const infoWindow = new google.maps.InfoWindow({
+                                      position: { lat: midpointLat, lng: midpointLng },
+                                      content: `
+                                        <div style="background: ${routeColor}; color: white; padding: 3px 8px; border-radius: 4px; 
+                                                   font-size: 11px; font-weight: bold; white-space: nowrap; text-align: center;">
+                                          ${duration}
+                                        </div>
+                                      `,
+                                      pixelOffset: new google.maps.Size(0, -5),
+                                      disableAutoPan: true
+                                    });
+                                    
+                                    // Open the info window
+                                    infoWindow.open(map);
+                                    
+                                    // Add route to state
+                                    setRoutes(prevRoutes => [
+                                      ...prevRoutes,
+                                      {
+                                        origin: property.id,
+                                        destination: poi.placeId,
+                                        route: directionsRenderer,
+                                        distance,
+                                        duration,
+                                        infoWindow
+                                      }
+                                    ]);
+                                  }
+                                }
+                              }
+                            );
+                          }
+                        }, 200 * index);
+                      });
+                    }
+                  } else {
+                    console.error(`POI search failed: ${status}`);
+                  }
+                }
+              );
+            }
+          }, 500);
+        } else {
+          console.error("Property is missing coordinates");
+          isInitializingMap.current = false;
+        }
         
         return;
       } catch (err) {
         console.error("Error initializing map:", err);
+        isInitializingMap.current = false;
       }
     }
     
