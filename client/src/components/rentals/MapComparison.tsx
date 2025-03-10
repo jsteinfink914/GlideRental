@@ -247,40 +247,119 @@ export function MapComparison({ properties }: MapComparisonProps) {
         poiTitle.textContent = 'Find nearby:';
         poiSection.appendChild(poiTitle);
         
-        // Create POI buttons
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.id = `poi-buttons-${property.id}`;
-        buttonsContainer.style.display = 'flex';
-        buttonsContainer.style.flexWrap = 'wrap';
-        buttonsContainer.style.gap = '5px';
-        buttonsContainer.style.marginBottom = '5px';
+        // Create POI buttons - using a simple table for even layout
+        const buttonsTable = document.createElement('table');
+        buttonsTable.style.width = '100%';
+        buttonsTable.style.borderCollapse = 'separate';
+        buttonsTable.style.borderSpacing = '4px';
+        buttonsTable.id = `poi-buttons-${property.id}`;
         
-        const buttonStyle = 'padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;';
-        const poiTypes = [
-          { type: 'restaurant', label: 'Restaurants' },
-          { type: 'grocery_or_supermarket', label: 'Grocery' },
-          { type: 'gym', label: 'Gym' },
-          { type: 'school', label: 'School' },
-          { type: 'park', label: 'Park' }
-        ];
+        // Row 1
+        const row1 = document.createElement('tr');
         
-        poiTypes.forEach(poi => {
-          const button = document.createElement('button');
-          button.className = 'poi-button';
-          button.setAttribute('data-poi', poi.type);
-          button.style.cssText = buttonStyle;
-          button.textContent = poi.label;
-          
-          // Add click handler directly
-          button.onclick = function() {
-            console.log(`Button clicked for ${poi.type}`);
-            searchNearbyPOIs(property, poi.type);
-          };
-          
-          buttonsContainer.appendChild(button);
-        });
+        // Restaurant button
+        const cell1 = document.createElement('td');
+        const restaurantBtn = document.createElement('button');
+        restaurantBtn.textContent = 'Restaurants';
+        restaurantBtn.style.width = '100%';
+        restaurantBtn.style.padding = '6px';
+        restaurantBtn.style.borderRadius = '4px';
+        restaurantBtn.style.border = '1px solid #ddd';
+        restaurantBtn.style.background = '#f5f5f5';
+        restaurantBtn.style.fontSize = '12px';
+        restaurantBtn.style.cursor = 'pointer';
+        restaurantBtn.id = `restaurant-btn-${property.id}`;
+        cell1.appendChild(restaurantBtn);
+        row1.appendChild(cell1);
         
-        poiSection.appendChild(buttonsContainer);
+        // Grocery button
+        const cell2 = document.createElement('td');
+        const groceryBtn = document.createElement('button');
+        groceryBtn.textContent = 'Grocery';
+        groceryBtn.style.width = '100%';
+        groceryBtn.style.padding = '6px';
+        groceryBtn.style.borderRadius = '4px';
+        groceryBtn.style.border = '1px solid #ddd';
+        groceryBtn.style.background = '#f5f5f5';
+        groceryBtn.style.fontSize = '12px';
+        groceryBtn.style.cursor = 'pointer';
+        groceryBtn.id = `grocery-btn-${property.id}`;
+        cell2.appendChild(groceryBtn);
+        row1.appendChild(cell2);
+        
+        buttonsTable.appendChild(row1);
+        
+        // Row 2
+        const row2 = document.createElement('tr');
+        
+        // Gym button
+        const cell3 = document.createElement('td');
+        const gymBtn = document.createElement('button');
+        gymBtn.textContent = 'Gym';
+        gymBtn.style.width = '100%';
+        gymBtn.style.padding = '6px';
+        gymBtn.style.borderRadius = '4px';
+        gymBtn.style.border = '1px solid #ddd';
+        gymBtn.style.background = '#f5f5f5';
+        gymBtn.style.fontSize = '12px';
+        gymBtn.style.cursor = 'pointer';
+        gymBtn.id = `gym-btn-${property.id}`;
+        cell3.appendChild(gymBtn);
+        row2.appendChild(cell3);
+        
+        // School button
+        const cell4 = document.createElement('td');
+        const schoolBtn = document.createElement('button');
+        schoolBtn.textContent = 'School';
+        schoolBtn.style.width = '100%';
+        schoolBtn.style.padding = '6px';
+        schoolBtn.style.borderRadius = '4px';
+        schoolBtn.style.border = '1px solid #ddd';
+        schoolBtn.style.background = '#f5f5f5';
+        schoolBtn.style.fontSize = '12px';
+        schoolBtn.style.cursor = 'pointer';
+        schoolBtn.id = `school-btn-${property.id}`;
+        cell4.appendChild(schoolBtn);
+        row2.appendChild(cell4);
+        
+        buttonsTable.appendChild(row2);
+        
+        // Row 3
+        const row3 = document.createElement('tr');
+        
+        // Park button
+        const cell5 = document.createElement('td');
+        cell5.colSpan = 2;
+        const parkBtn = document.createElement('button');
+        parkBtn.textContent = 'Parks';
+        parkBtn.style.width = '100%';
+        parkBtn.style.padding = '6px';
+        parkBtn.style.borderRadius = '4px';
+        parkBtn.style.border = '1px solid #ddd';
+        parkBtn.style.background = '#f5f5f5';
+        parkBtn.style.fontSize = '12px';
+        parkBtn.style.cursor = 'pointer';
+        parkBtn.id = `park-btn-${property.id}`;
+        cell5.appendChild(parkBtn);
+        row3.appendChild(cell5);
+        
+        buttonsTable.appendChild(row3);
+        
+        // Add event listeners to buttons
+        const addButtonListener = (btn: HTMLButtonElement, poiType: string) => {
+          btn.addEventListener('click', () => {
+            console.log(`Searching for ${poiType} near property ${property.id}`);
+            searchNearbyPOIs(property, poiType);
+          });
+        };
+        
+        addButtonListener(restaurantBtn, 'restaurant');
+        addButtonListener(groceryBtn, 'grocery_or_supermarket');
+        addButtonListener(gymBtn, 'gym');
+        addButtonListener(schoolBtn, 'school');
+        addButtonListener(parkBtn, 'park');
+        
+        poiSection.appendChild(buttonsTable);
         
         // Create results container
         const resultsContainer = document.createElement('div');
@@ -384,29 +463,52 @@ export function MapComparison({ properties }: MapComparisonProps) {
   
   // Function to search for POIs near a property
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
-    if (!placesService || !googleMap || !property.latitude || !property.longitude) return;
+    if (!placesService || !googleMap || !property.latitude || !property.longitude) {
+      console.error("Cannot search POIs - missing required services or property location");
+      return;
+    }
     
-    // Clear existing POI markers
+    console.log(`Searching for ${poiType} near property ${property.id}`);
+    
+    // Keep existing POIs but clear markers of this type
     setPois(prevPois => {
-      prevPois.forEach(poi => {
-        if (poi.marker) {
-          poi.marker.setMap(null);
-        }
-      });
-      return [];
+      // Only remove markers of the same type to allow multiple POI types on the map
+      prevPois
+        .filter(poi => poi.type === poiType)
+        .forEach(poi => {
+          if (poi.marker) {
+            poi.marker.setMap(null);
+          }
+        });
+      
+      // Keep all POIs except those of the current type that we're replacing
+      return prevPois.filter(poi => poi.type !== poiType);
     });
     
-    // Clear existing routes
+    // Clear existing routes that go to POIs of this type
     setRoutes(prevRoutes => {
-      prevRoutes.forEach(route => {
-        if (route.route) {
-          route.route.setMap(null);
-        }
-        if (route.polyline) {
-          route.polyline.setMap(null);
+      // Find which POIs have this type
+      const poiIdsToRemove = new Set<string>();
+      pois.forEach(poi => {
+        if (poi.type === poiType) {
+          poiIdsToRemove.add(poi.placeId);
         }
       });
-      return [];
+      
+      // Remove routes that go to those POIs
+      prevRoutes
+        .filter(route => poiIdsToRemove.has(route.destination))
+        .forEach(route => {
+          if (route.route) {
+            route.route.setMap(null);
+          }
+          if (route.polyline) {
+            route.polyline.setMap(null);
+          }
+        });
+      
+      // Return filtered routes
+      return prevRoutes.filter(route => !poiIdsToRemove.has(route.destination));
     });
     
     try {
@@ -628,23 +730,32 @@ export function MapComparison({ properties }: MapComparisonProps) {
   
   // Calculate route between property and POI with visual display
   const calculateRoute = async (property: Property, poi: POI) => {
-    if (!directionsService || !googleMap || !property.latitude || !property.longitude) return;
+    if (!directionsService || !googleMap || !property.latitude || !property.longitude) {
+      console.error("Cannot calculate route - missing required services or property location");
+      return;
+    }
     
     try {
       setCalculatingRoutes(true);
       
-      // Clear existing routes first
-      setRoutes(prevRoutes => {
-        prevRoutes.forEach(route => {
-          if (route.route) {
-            route.route.setMap(null);
-          }
-          if (route.polyline) {
-            route.polyline.setMap(null);
-          }
-        });
-        return [];
-      });
+      // Check if we already have a route for this POI
+      const existingRouteIndex = routes.findIndex(route => route.destination === poi.placeId);
+      
+      // If we have an existing route, remove it
+      if (existingRouteIndex >= 0) {
+        const existingRoute = routes[existingRouteIndex];
+        if (existingRoute.route) {
+          existingRoute.route.setMap(null);
+        }
+        if (existingRoute.polyline) {
+          existingRoute.polyline.setMap(null);
+        }
+        
+        // Remove this route from state
+        setRoutes(prevRoutes => 
+          prevRoutes.filter(route => route.destination !== poi.placeId)
+        );
+      }
       
       const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
       
