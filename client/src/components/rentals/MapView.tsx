@@ -64,6 +64,10 @@ export default function MapView({
           ]
         };
         
+        // Check that mapRef.current is not null before initializing
+        if (!mapRef.current) {
+          throw new Error("Map container element not found");
+        }
         const newMap = new mapsApi.Map(mapRef.current, mapOptions);
         setMap(newMap);
         
