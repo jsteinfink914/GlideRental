@@ -94,7 +94,15 @@ export function MapComparison({ properties }: MapComparisonProps) {
     }
   };
   
-  const calculateRoute = async (property: Property, poi: POI) => {
+  const calculateRoute = async (
+    property: Property, 
+    poi: POI, 
+    styleOptions?: {
+      strokeColor?: string;
+      strokeOpacity?: number;
+      strokeWeight?: number;
+    }
+  ) => {
     if (!directionsService || !googleMap || !property.latitude || !property.longitude) {
       console.error("Missing required services for route calculation");
       return;
@@ -114,11 +122,28 @@ export function MapComparison({ properties }: MapComparisonProps) {
           if (existingRoute.polyline) {
             existingRoute.polyline.setMap(null);
           }
+          if (existingRoute.infoWindow) {
+            existingRoute.infoWindow.close();
+          }
         }
         return prevRoutes.filter(r => !(r.origin === property.id && r.destination === poi.placeId));
       });
       
       const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+      
+      // Get color based on POI type for route visualization
+      const getRouteColor = (type: string) => {
+        const colorMap: Record<string, string> = {
+          grocery_or_supermarket: '#4CAF50', // green
+          restaurant: '#F44336', // red
+          gym: '#FF9800', // orange
+          school: '#9C27B0', // purple
+          park: '#FFEB3B', // yellow
+          cafe: '#795548', // brown
+          search_result: '#2196F3', // blue
+        };
+        return colorMap[type] || '#4285F4'; // default blue
+      };
       
       // Calculate route
       const response = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
@@ -135,15 +160,18 @@ export function MapComparison({ properties }: MapComparisonProps) {
         });
       });
       
+      // Get route color
+      const routeColor = styleOptions?.strokeColor || getRouteColor(poi.type);
+      
       // Create a renderer for the route
       const directionsRenderer = new google.maps.DirectionsRenderer({
         map: googleMap,
         suppressMarkers: true, // Don't show default markers
         preserveViewport: true, // Don't move the map view
         polylineOptions: {
-          strokeColor: "#4285F4", 
-          strokeWeight: 5,
-          strokeOpacity: 0.7
+          strokeColor: routeColor, 
+          strokeWeight: styleOptions?.strokeWeight || 5,
+          strokeOpacity: styleOptions?.strokeOpacity || 0.7
         }
       });
       
@@ -153,11 +181,47 @@ export function MapComparison({ properties }: MapComparisonProps) {
       // Extract route info
       let distance = "Unknown";
       let duration = "Unknown";
+      let midpointLat = 0;
+      let midpointLng = 0;
+      
       if (response.routes.length > 0) {
         const route = response.routes[0];
         const leg = route.legs[0];
         distance = leg.distance?.text || 'Unknown distance';
         duration = leg.duration?.text || 'Unknown time';
+        
+        // Calculate midpoint of route for label
+        if (leg.steps.length > 0) {
+          // Find middle step
+          const midStep = leg.steps[Math.floor(leg.steps.length / 2)];
+          midpointLat = midStep.start_location.lat();
+          midpointLng = midStep.start_location.lng();
+        } else {
+          // Fallback to average of start and end
+          midpointLat = (property.latitude + poi.location.lat()) / 2;
+          midpointLng = (property.longitude + poi.location.lng()) / 2;
+        }
+      }
+      
+      // Create an info window for the travel time
+      let infoWindow: google.maps.InfoWindow | undefined;
+      
+      // Only add time label for primary routes (not faded secondary routes)
+      if (!styleOptions || styleOptions.strokeOpacity === undefined || styleOptions.strokeOpacity > 0.5) {
+        infoWindow = new google.maps.InfoWindow({
+          position: { lat: midpointLat, lng: midpointLng },
+          content: `
+            <div style="background: ${routeColor}; color: white; padding: 3px 8px; border-radius: 4px; 
+                        font-size: 11px; font-weight: bold; white-space: nowrap; text-align: center;">
+              ${duration}
+            </div>
+          `,
+          pixelOffset: new google.maps.Size(0, -5),
+          disableAutoPan: true
+        });
+        
+        // Open the info window
+        infoWindow.open(googleMap);
       }
       
       // Add to routes state
@@ -166,15 +230,19 @@ export function MapComparison({ properties }: MapComparisonProps) {
         destination: poi.placeId,
         route: directionsRenderer,
         distance,
-        duration
+        duration,
+        infoWindow
       };
       
       setRoutes(prevRoutes => [...prevRoutes, newRoute]);
       
-      // Update all POI results with the route info
+      // Update all POI results with the route info - used formatted HTML with color
       const routeInfoElems = document.querySelectorAll(`[id="route-${poi.placeId}"]`);
       routeInfoElems.forEach(elem => {
-        elem.textContent = `${distance}, ${duration}`;
+        elem.innerHTML = `
+          <span style="color: ${routeColor}; font-weight: bold;">${duration}</span> • 
+          <span>${distance}</span>
+        `;
       });
       
     } catch (error) {
@@ -182,7 +250,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
       // Display error in the route info elements
       const routeInfoElems = document.querySelectorAll(`[id="route-${poi.placeId}"]`);
       routeInfoElems.forEach(elem => {
-        elem.textContent = `Unable to calculate route`;
+        elem.innerHTML = `<span style="color: #c00;">Unable to calculate route</span>`;
       });
     } finally {
       setCalculatingRoutes(false);
@@ -1205,15 +1273,43 @@ export function MapComparison({ properties }: MapComparisonProps) {
             // Update state with new POIs
             setPois(prevPois => [...prevPois, ...newPOIs]);
             
-            // If there are POIs found, automatically calculate route to the closest one
+            // If there are POIs found, automatically calculate routes to all of them
             if (newPOIs.length > 0) {
-              // Calculate route to the first POI immediately
-              calculateRoute(property, newPOIs[0]);
-              
-              // Then calculate routes to all POIs to show distances
-              newPOIs.forEach(poi => {
-                calculateRouteDistanceOnly(property, poi);
+              // Calculate routes to all POIs to show distances and draw routes
+              newPOIs.forEach((poi, index) => {
+                // Slight delay between route calculations to prevent rate limiting
+                setTimeout(() => {
+                  // For the first POI, do a full route with map drawing
+                  if (index === 0) {
+                    calculateRoute(property, poi);
+                  } else {
+                    // For other POIs, first show just distance/time
+                    calculateRouteDistanceOnly(property, poi);
+                    // Then after a delay, draw the route too, but with lighter styling
+                    setTimeout(() => {
+                      calculateRoute(property, poi, { 
+                        strokeOpacity: 0.5, 
+                        strokeWeight: 3 
+                      });
+                    }, 300 * index);
+                  }
+                }, 200 * index);
               });
+              
+              // Expand map bounds to include all POIs
+              if (googleMap) {
+                const bounds = new google.maps.LatLngBounds();
+                // Include property
+                bounds.extend(new google.maps.LatLng(property.latitude, property.longitude));
+                // Include all POIs
+                newPOIs.forEach(poi => bounds.extend(poi.location));
+                // Set bounds with slight padding
+                googleMap.fitBounds(bounds);
+                // Add slight zoom out for better visibility
+                google.maps.event.addListenerOnce(googleMap, 'bounds_changed', () => {
+                  googleMap.setZoom(googleMap.getZoom() - 0.5);
+                });
+              }
             }
             
             // Update the results container
