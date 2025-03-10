@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { calculateRoute, RouteInfo } from '@/lib/places-service';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 
 // This is needed to ensure we have the Google Maps types
 declare global {
@@ -73,6 +74,7 @@ export function CompareMap({ properties }: CompareMapProps) {
   const infoWindowsRef = useRef<google.maps.InfoWindow[]>([]);
   
   const [selectedPOIType, setSelectedPOIType] = useState<POIType>('gym');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoadingMap, setIsLoadingMap] = useState<boolean>(true);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<{[propertyId: number]: any[]}>({});
@@ -184,6 +186,9 @@ export function CompareMap({ properties }: CompareMapProps) {
             }
           });
           
+          // Store the property ID with the marker for reference
+          marker.set('propertyId', property.id);
+          
           const infoWindow = new window.google.maps.InfoWindow({
             content: `
               <div class="p-2">
@@ -194,10 +199,74 @@ export function CompareMap({ properties }: CompareMapProps) {
             `
           });
           
-          marker.addListener('click', () => {
+          marker.addListener('click', async () => {
             closeAllInfoWindows();
             infoWindow.open(map, marker);
             infoWindowsRef.current.push(infoWindow);
+            
+            // Check if we have a nearby place for this property and there's a search query
+            if (selectedPOIType && nearbyPlaces[property.id] && nearbyPlaces[property.id].length > 0) {
+              try {
+                // Clear any previously drawn routes
+                clearRoutes();
+                
+                const place = nearbyPlaces[property.id][0];
+                console.log(`Drawing route from property ${property.id} to ${place.name}`);
+                
+                // Make sure we have valid coordinates for both property and place
+                if (property.latitude == null || property.longitude == null || 
+                    place.lat == null || place.lng == null) {
+                  console.warn(`Missing coordinates for route calculation`);
+                  return;
+                }
+                
+                const route = await calculateRoute(
+                  { lat: property.latitude, lng: property.longitude },
+                  { lat: place.lat, lng: place.lng }
+                );
+                
+                if (route && route.route && route.route.length > 0) {
+                  console.log(`Route calculated successfully:`, route);
+                  
+                  // Draw route on map
+                  const routePath = new window.google.maps.Polyline({
+                    path: route.route,
+                    geodesic: true,
+                    strokeColor: color,
+                    strokeOpacity: 0.7,
+                    strokeWeight: 5
+                  });
+                  
+                  routePath.setMap(map);
+                  routesRef.current.push(routePath);
+                  
+                  // Add a label with time in the middle of the route
+                  const midpointIndex = Math.floor(route.route.length / 2);
+                  const midpoint = route.route[midpointIndex];
+                  
+                  const timeInfoWindow = new window.google.maps.InfoWindow({
+                    content: `
+                      <div class="p-1 text-center">
+                        <p class="font-bold">🚶 ${route.duration}</p>
+                      </div>
+                    `,
+                    position: midpoint,
+                    pixelOffset: new window.google.maps.Size(0, -15)
+                  });
+                  
+                  timeInfoWindow.open(map);
+                  infoWindowsRef.current.push(timeInfoWindow);
+                  
+                  // Store route info for display in the results panel
+                  setSelectedRoutes(prev => ({
+                    ...prev,
+                    [property.id]: route
+                  }));
+                }
+              } catch (error) {
+                console.error('Error drawing route:', error);
+              }
+            }
           });
           
           markersRef.current.push(marker);
@@ -304,10 +373,13 @@ export function CompareMap({ properties }: CompareMapProps) {
         
         console.log(`Fetching for property ${property.id} at ${property.latitude},${property.longitude}`);
         
-        const response = await fetch(
-          `/api/nearby-places?lat=${property.latitude}&lng=${property.longitude}&type=${selectedPOIType}`, 
-          { method: 'GET' }
-        );
+        // Include the search query if provided
+        let url = `/api/nearby-places?lat=${property.latitude}&lng=${property.longitude}&type=${selectedPOIType}`;
+        if (searchQuery.trim()) {
+          url += `&keyword=${encodeURIComponent(searchQuery.trim())}`;
+        }
+        
+        const response = await fetch(url, { method: 'GET' });
         
         if (response.ok) {
           const data = await response.json();
@@ -355,6 +427,13 @@ export function CompareMap({ properties }: CompareMapProps) {
             // Draw route from property to place
             console.log(`Drawing route from property ${property.id} to ${place.name}`);
             try {
+              // Ensure we have valid coordinates
+              if (property.latitude == null || property.longitude == null || 
+                  place.lat == null || place.lng == null) {
+                console.warn(`Missing coordinates for route calculation`);
+                continue;
+              }
+              
               const route = await calculateRoute(
                 { lat: property.latitude, lng: property.longitude },
                 { lat: place.lat, lng: place.lng }
@@ -464,6 +543,28 @@ export function CompareMap({ properties }: CompareMapProps) {
                   </SelectContent>
                 </Select>
                 
+                <div className="flex flex-col gap-2 mt-2">
+                  <label className="text-sm font-medium">Search (optional)</label>
+                  <div className="flex gap-1 items-center">
+                    <Input
+                      placeholder="e.g. Trader Joe's or Crunch Fitness"
+                      value={searchQuery}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                      className="flex-1"
+                    />
+                    {searchQuery && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8" 
+                        onClick={() => setSearchQuery('')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
                 <Button 
                   onClick={fetchNearbyPlaces} 
                   className="w-full mt-2"
@@ -475,7 +576,9 @@ export function CompareMap({ properties }: CompareMapProps) {
                       Finding places...
                     </>
                   ) : (
-                    `Find Nearest ${selectedPOIType.charAt(0).toUpperCase() + selectedPOIType.slice(1)}`
+                    searchQuery.trim() 
+                      ? `Find Nearest "${searchQuery.trim()}"` 
+                      : `Find Nearest ${selectedPOIType.charAt(0).toUpperCase() + selectedPOIType.slice(1)}`
                   )}
                 </Button>
               </div>
