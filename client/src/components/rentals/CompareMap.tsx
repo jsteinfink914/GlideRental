@@ -50,6 +50,22 @@ export function CompareMap({ properties }: CompareMapProps) {
     );
   }
   
+  // Validate that we have at least 2 valid properties with coordinates
+  const validProperties = properties.filter(p => p.latitude && p.longitude);
+  if (validProperties.length < 2) {
+    return (
+      <Card className="w-full mb-8">
+        <CardHeader>
+          <CardTitle>Compare Routes & Distances</CardTitle>
+          <p className="text-muted-foreground">Not enough properties with valid coordinates</p>
+        </CardHeader>
+        <CardContent className="text-center py-6">
+          <p className="mb-3">At least 2 properties with valid coordinates are required for comparison.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -90,6 +106,15 @@ export function CompareMap({ properties }: CompareMapProps) {
     
     const initMap = async () => {
       try {
+        // Ensure references are reset on each initialization to prevent DOM errors
+        if (googleMapRef.current) {
+          // Clean up existing map objects
+          markersRef.current.forEach(marker => marker.setMap(null));
+          routesRef.current.forEach(route => route.setMap(null));
+          infoWindowsRef.current.forEach(infoWindow => infoWindow.close());
+          googleMapRef.current = null;
+        }
+        
         console.log("Loading Google Maps...");
         // Load Google Maps API
         await loadGoogleMaps();
@@ -249,6 +274,13 @@ export function CompareMap({ properties }: CompareMapProps) {
   const fetchNearbyPlaces = async () => {
     if (!selectedPOIType || !googleMapRef.current) {
       console.warn("Cannot fetch places - map not initialized or POI type not selected");
+      return;
+    }
+    
+    // Additional validation to prevent errors
+    const validProps = properties.filter(p => p.latitude && p.longitude);
+    if (validProps.length < 2) {
+      console.warn("Not enough properties with valid coordinates");
       return;
     }
     
