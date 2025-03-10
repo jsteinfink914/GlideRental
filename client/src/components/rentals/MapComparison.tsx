@@ -73,8 +73,8 @@ export function MapComparison({ properties }: MapComparisonProps) {
   useEffect(() => {
     if (!mapApiKey || googleMapsLoaded) return;
     
-    // We'll use a simpler approach to loading the Google Maps API
-    // that is more reliable and doesn't use the loadGoogleMaps function
+    // Use the recommended approach to loading the Google Maps API
+    // following best practices from Google
     const loadGoogleMapsScript = () => {
       try {
         // Only load if not already loaded
@@ -83,17 +83,20 @@ export function MapComparison({ properties }: MapComparisonProps) {
           return;
         }
         
+        // Create the script element with async loading pattern
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapApiKey}&libraries=places`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapApiKey}&libraries=places&callback=initMap&loading=async`;
         script.async = true;
-        script.defer = true;
         
-        script.onload = () => {
+        // Define the global callback function that Google Maps will call
+        (window as any).initMap = () => {
           setGoogleMapsLoaded(true);
+          console.log('Google Maps API loaded successfully');
         };
         
         script.onerror = () => {
           setMapError('Failed to load Google Maps API');
+          console.error('Google Maps script failed to load');
         };
         
         document.head.appendChild(script);
@@ -102,6 +105,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
           // Only remove the script if it was added by this component
           if (document.head.contains(script)) {
             document.head.removeChild(script);
+            delete (window as any).initMap;
           }
         };
       } catch (error) {
@@ -241,15 +245,19 @@ export function MapComparison({ properties }: MapComparisonProps) {
             if (buttonsContainer) {
               const buttons = buttonsContainer.querySelectorAll('.poi-button');
               buttons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                  const poiType = (e.currentTarget as HTMLElement).getAttribute('data-poi');
+                // First, remove any existing listeners to prevent duplicates
+                button.removeEventListener('click', () => {});
+                
+                // Then add the new listener with proper event handling
+                button.addEventListener('click', function(this: HTMLElement) {
+                  const poiType = this.getAttribute('data-poi');
                   if (poiType) {
                     searchNearbyPOIs(property, poiType);
                   }
                 });
               });
             }
-          }, 300);
+          }, 500);
         });
         
         newMarkers.push(marker);
