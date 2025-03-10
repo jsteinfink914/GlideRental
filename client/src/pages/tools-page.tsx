@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Property } from "@shared/schema";
@@ -10,152 +10,47 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
-import { loadGoogleMaps } from '@/lib/google-maps-loader';
 
-// A simple map component that renders a Google Map with property markers
-function SimplePropertyMap({ properties }: { properties: Property[] }) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Initialize the map
-    const initMap = async () => {
-      try {
-        if (!mapRef.current) return;
-        
-        await loadGoogleMaps();
-        
-        if (!isMounted) return;
-        
-        if (typeof window.google === 'undefined') {
-          setError("Failed to load Google Maps API");
-          setIsLoading(false);
-          return;
-        }
-        
-        // Create a bounds object to center the map
-        const bounds = new window.google.maps.LatLngBounds();
-        let hasValidCoords = false;
-        
-        // Add property locations to bounds
-        properties.forEach(property => {
-          if (property.latitude && property.longitude) {
-            bounds.extend(new window.google.maps.LatLng(property.latitude, property.longitude));
-            hasValidCoords = true;
-          }
-        });
-        
-        if (!hasValidCoords) {
-          // Default to NYC if no valid coordinates
-          bounds.extend(new window.google.maps.LatLng(40.7128, -74.0060));
-        }
-        
-        // Create the map
-        const map = new window.google.maps.Map(mapRef.current, {
-          center: bounds.getCenter(),
-          zoom: 12,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: true,
-        });
-        
-        // Add property markers
-        properties.forEach((property, index) => {
-          if (!property.latitude || !property.longitude) return;
-          
-          // Choose a different color for each marker
-          const colors = ['#4CAF50', '#2196F3', '#F44336'];
-          const color = colors[index % colors.length];
-          
-          // Create a marker
-          const marker = new window.google.maps.Marker({
-            position: { lat: property.latitude, lng: property.longitude },
-            map,
-            title: property.title || 'Property',
-            label: {
-              text: (index + 1).toString(),
-              color: 'white'
-            },
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: color,
-              fillOpacity: 1,
-              strokeWeight: 0,
-              scale: 10
-            }
-          });
-          
-          // Add info window
-          const infoWindow = new window.google.maps.InfoWindow({
-            content: `
-              <div style="padding: 10px;">
-                <h3 style="font-weight: bold; margin-bottom: 5px;">${property.title || 'Property'}</h3>
-                <p>${property.address || ''}</p>
-                <p>$${property.rent.toLocaleString()}/month</p>
-              </div>
-            `
-          });
-          
-          // Show info window on click
-          marker.addListener('click', () => {
-            infoWindow.open(map, marker);
-          });
-        });
-        
-        // Fit map to bounds
-        if (hasValidCoords) {
-          map.fitBounds(bounds);
-          
-          // Add some padding
-          const listener = window.google.maps.event.addListenerOnce(map, 'idle', () => {
-            if (properties.length === 1) {
-              map.setZoom(15);
-            }
-          });
-        }
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error initializing map:', err);
-        setError("Failed to initialize map");
-        setIsLoading(false);
-      }
-    };
-    
-    initMap();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [properties]);
+// This component displays property locations using colored circles instead of Google Maps
+// to avoid DOM errors and rendering issues
+function StaticPropertyComparison({ properties }: { properties: Property[] }) {
+  // Colors for different properties
+  const colors = ['#4CAF50', '#2196F3', '#F44336'];
   
   return (
     <div className="w-full">
-      <div 
-        ref={mapRef}
-        className="w-full h-[400px] rounded-md bg-muted/20 relative"
-      >
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-              <span>Loading map...</span>
+      <div className="grid gap-4">
+        {properties.map((property, index) => (
+          <div key={property.id} className="border rounded-lg p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: colors[index % colors.length] }}
+              ></div>
+              <h3 className="font-medium text-base">{property.title}</h3>
+            </div>
+            <div className="pl-7">
+              <p className="text-sm text-muted-foreground mb-1">{property.address}</p>
+              <p className="text-sm mb-1">
+                <span className="text-muted-foreground">Price:</span> ${property.rent.toLocaleString()}/month
+              </p>
+              <p className="text-sm mb-1">
+                <span className="text-muted-foreground">Size:</span> {property.squareFeet} sq ft
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Bedrooms/Bathrooms:</span> {property.bedrooms}b / {property.bathrooms}ba
+              </p>
+              
+              {property.latitude && property.longitude ? (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <p>Location: {property.neighborhood}</p>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">No location data available</p>
+              )}
             </div>
           </div>
-        )}
-        
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-            <div className="flex flex-col items-center text-center p-4">
-              <p className="text-destructive font-medium mb-2">Error: {error}</p>
-              <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
-            </div>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -360,12 +255,12 @@ export default function ToolsPage() {
                         <CardContent>
                           {propertiesForComparison.length >= 2 ? (
                             <div>
-                              <p className="mb-4 text-center">Properties shown on map:</p>
-                              {/* Display the simple map component */}
-                              <SimplePropertyMap properties={propertiesForComparison} />
+                              <p className="mb-4 text-center">Property Location Comparison:</p>
+                              {/* Display the static property comparison */}
+                              <StaticPropertyComparison properties={propertiesForComparison} />
                               
                               <div className="mt-4 text-center text-sm text-muted-foreground">
-                                <p>Click on markers to see property details</p>
+                                <p>Static comparison view - color dots represent different properties</p>
                               </div>
                             </div>
                           ) : (
