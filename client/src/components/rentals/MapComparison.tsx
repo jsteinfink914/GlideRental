@@ -245,16 +245,22 @@ export function MapComparison({ properties }: MapComparisonProps) {
             if (buttonsContainer) {
               const buttons = buttonsContainer.querySelectorAll('.poi-button');
               buttons.forEach(button => {
-                // First, remove any existing listeners to prevent duplicates
-                button.removeEventListener('click', () => {});
-                
-                // Then add the new listener with proper event handling
-                button.addEventListener('click', function(this: HTMLElement) {
-                  const poiType = this.getAttribute('data-poi');
+                // Use a more direct approach with a function we actually track
+                const clickHandler = function(event: MouseEvent) {
+                  const button = event.currentTarget as HTMLElement;
+                  const poiType = button.getAttribute('data-poi');
                   if (poiType) {
                     searchNearbyPOIs(property, poiType);
+                    console.log(`Searching nearby ${poiType} for property ${property.id}`);
                   }
-                });
+                };
+                
+                // Remove existing listeners by cloning the element
+                const newButton = button.cloneNode(true) as HTMLElement;
+                button.parentNode?.replaceChild(newButton, button);
+                
+                // Add the new listener
+                newButton.addEventListener('click', clickHandler);
               });
             }
           }, 500);
@@ -409,6 +415,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
                       <h3 style="margin: 0; font-size: 14px; margin-bottom: 3px;">${place.name}</h3>
                       <p style="margin: 0; font-size: 12px; margin-bottom: 3px;">${place.vicinity || ''}</p>
                       <p style="margin: 0; font-size: 12px;">Rating: ${place.rating ? `${place.rating} ⭐` : 'N/A'}</p>
+                      <p style="margin: 0; font-size: 12px; margin-top: 5px; font-style: italic;">Click for route details</p>
                     </div>
                   `
                 });
@@ -432,13 +439,16 @@ export function MapComparison({ properties }: MapComparisonProps) {
                 poi.marker = marker;
                 newPOIs.push(poi);
                 
-                // Add to results HTML
+                // Add to results HTML with distance that will be updated
                 resultsHTML += `
                   <div style="padding: 4px 0; border-bottom: 1px solid #eee; cursor: pointer;" class="poi-result" data-place-id="${place.place_id}">
                     <div style="font-weight: bold;">${place.name}</div>
                     <div style="display: flex; justify-content: space-between;">
                       <span>${place.vicinity || ''}</span>
                       <span>${place.rating ? `${place.rating} ⭐` : ''}</span>
+                    </div>
+                    <div style="margin-top: 4px; font-size: 11px; color: #666;" id="route-${place.place_id}">
+                      Calculating route...
                     </div>
                   </div>
                 `;
@@ -447,6 +457,17 @@ export function MapComparison({ properties }: MapComparisonProps) {
             
             // Update state with new POIs
             setPois(prevPois => [...prevPois, ...newPOIs]);
+            
+            // If there are POIs found, automatically calculate route to the closest one
+            if (newPOIs.length > 0) {
+              // Calculate route to the first POI immediately
+              calculateRoute(property, newPOIs[0]);
+              
+              // Then calculate routes to all POIs to show distances
+              newPOIs.forEach(poi => {
+                calculateRouteDistanceOnly(property, poi);
+              });
+            }
             
             // Update the results container
             if (resultsContainer) {
@@ -489,7 +510,71 @@ export function MapComparison({ properties }: MapComparisonProps) {
     }
   };
   
-  // Calculate route between property and POI
+  // Calculate route distance and time without drawing the route (for list display)
+  const calculateRouteDistanceOnly = async (property: Property, poi: POI) => {
+    if (!directionsService || !googleMap || !property.latitude || !property.longitude) return;
+    
+    try {
+      const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+      
+      // Request directions
+      directionsService.route(
+        {
+          origin: propertyLocation,
+          destination: { placeId: poi.placeId },
+          travelMode: google.maps.TravelMode.DRIVING
+        },
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            // Get route details
+            const route = result.routes[0].legs[0];
+            const distance = route.distance?.text || 'Unknown';
+            const duration = route.duration?.text || 'Unknown';
+            
+            // Find the route info element and update it
+            const routeInfoElement = document.getElementById(`route-${poi.placeId}`);
+            if (routeInfoElement) {
+              routeInfoElement.innerHTML = `
+                <span style="display: inline-block; margin-right: 8px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg> 
+                  ${duration}
+                </span>
+                <span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;">
+                    <path d="M12 22s-8-4.5-8-11.8a8 8 0 1 1 16 0c0 7.3-8 11.8-8 11.8z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg> 
+                  ${distance}
+                </span>
+              `;
+            }
+            
+            // Update the poi with distance and duration
+            setPois(prevPois => 
+              prevPois.map(p => 
+                p.placeId === poi.placeId 
+                  ? { ...p, distance, duration } 
+                  : p
+              )
+            );
+          } else {
+            // Show error in route info
+            const routeInfoElement = document.getElementById(`route-${poi.placeId}`);
+            if (routeInfoElement) {
+              routeInfoElement.innerHTML = `<span style="color: #c00;">Error calculating route</span>`;
+            }
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error calculating route distance:', error);
+    }
+  };
+  
+  // Calculate route between property and POI with visual display
   const calculateRoute = async (property: Property, poi: POI) => {
     if (!directionsService || !googleMap || !property.latitude || !property.longitude) return;
     
