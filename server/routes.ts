@@ -143,6 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!apiKey) {
       console.warn("Google Maps API key not found in environment variables");
     }
+    console.log("Returning Google Maps API key:", apiKey);
     res.json({ key: apiKey });
   });
 
