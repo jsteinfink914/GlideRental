@@ -43,10 +43,10 @@ export async function findNearestPlace(
   property: Property,
   type: string,
   keyword: string
-): Promise<POI | null> {
+): Promise<POI | undefined> {
   if (!property.latitude || !property.longitude) {
     console.warn("Property missing coordinates", property);
-    return null;
+    return undefined;
   }
 
   try {
@@ -66,7 +66,7 @@ export async function findNearestPlace(
 
     if (!data.places || data.places.length === 0) {
       console.warn(`No ${type} found near ${property.address}`);
-      return null;
+      return undefined;
     }
 
     // Return the first result (our API should already sort by distance)
@@ -87,7 +87,7 @@ export async function findNearestPlace(
     };
   } catch (error) {
     console.error(`Error finding nearest ${type} (${keyword}):`, error);
-    return null;
+    return undefined;
   }
 }
 
@@ -159,7 +159,7 @@ export async function calculateRoute(
   origin: { lat: number; lng: number },
   destination: { lat: number; lng: number },
   mode: 'WALKING' | 'DRIVING' | 'TRANSIT' | 'BICYCLING' = 'WALKING'
-): Promise<RouteInfo | null> {
+): Promise<RouteInfo | undefined> {
   try {
     const response = await fetch('/api/routes', {
       method: 'POST',
@@ -180,6 +180,6 @@ export async function calculateRoute(
     return await response.json();
   } catch (error) {
     console.error('Error calculating route:', error);
-    return null;
+    return undefined;
   }
 }

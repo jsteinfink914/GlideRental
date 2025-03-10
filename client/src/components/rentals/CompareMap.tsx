@@ -8,6 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { calculateRoute, RouteInfo } from '@/lib/places-service';
 import { Loader2 } from 'lucide-react';
 
+// This is needed to ensure we have the Google Maps types
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
+
 interface CompareMapProps {
   properties: Property[];
 }
@@ -38,7 +45,7 @@ export function CompareMap({ properties }: CompareMapProps) {
   const [isLoadingMap, setIsLoadingMap] = useState<boolean>(true);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<{[propertyId: number]: any[]}>({});
-  const [selectedRoutes, setSelectedRoutes] = useState<{[propertyId: number]: RouteInfo | null}>({});
+  const [selectedRoutes, setSelectedRoutes] = useState<{[propertyId: number]: RouteInfo | undefined}>({});
   const [propertyColors, setPropertyColors] = useState<{[propertyId: number]: string}>({});
   
   // Generate colors for properties
