@@ -201,27 +201,105 @@ export function MapComparison({ properties }: MapComparisonProps) {
         // Create a custom info window with POI search
         const customInfoWindow = document.createElement('div');
         customInfoWindow.className = 'property-info-window';
-        customInfoWindow.innerHTML = `
-          <div style="padding: 5px; max-width: 280px;">
-            <h3 style="margin: 0; font-size: 16px; margin-bottom: 5px;">${property.title || 'Property'}</h3>
-            <p style="margin: 0; font-size: 14px; margin-bottom: 5px;">${property.address || ''}</p>
-            <p style="margin: 0; font-size: 14px; margin-bottom: 5px;">$${property.rent?.toLocaleString() || 0}/month</p>
-            <p style="margin: 0; font-size: 14px;">${property.bedrooms || 0} bed, ${property.bathrooms || 0} bath</p>
-            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-              <div style="font-weight: bold; margin-bottom: 5px;">Find nearby:</div>
-              <div id="poi-buttons-${property.id}" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px;">
-                <button class="poi-button" data-poi="restaurant" style="padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;">Restaurants</button>
-                <button class="poi-button" data-poi="grocery_or_supermarket" style="padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;">Grocery</button>
-                <button class="poi-button" data-poi="gym" style="padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;">Gym</button>
-                <button class="poi-button" data-poi="school" style="padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;">School</button>
-                <button class="poi-button" data-poi="park" style="padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;">Park</button>
-              </div>
-              <div id="poi-results-${property.id}" style="font-size: 12px; max-height: 100px; overflow-y: auto;">
-                <p style="margin: 0; color: #666;">Click a category to find nearby places</p>
-              </div>
-            </div>
-          </div>
-        `;
+        
+        // Create the main content
+        const contentWrapper = document.createElement('div');
+        contentWrapper.style.padding = '5px';
+        contentWrapper.style.maxWidth = '280px';
+        
+        // Add property info
+        const title = document.createElement('h3');
+        title.style.margin = '0';
+        title.style.fontSize = '16px';
+        title.style.marginBottom = '5px';
+        title.textContent = property.title || 'Property';
+        contentWrapper.appendChild(title);
+        
+        const address = document.createElement('p');
+        address.style.margin = '0';
+        address.style.fontSize = '14px';
+        address.style.marginBottom = '5px';
+        address.textContent = property.address || '';
+        contentWrapper.appendChild(address);
+        
+        const price = document.createElement('p');
+        price.style.margin = '0';
+        price.style.fontSize = '14px';
+        price.style.marginBottom = '5px';
+        price.textContent = `$${property.rent?.toLocaleString() || 0}/month`;
+        contentWrapper.appendChild(price);
+        
+        const details = document.createElement('p');
+        details.style.margin = '0';
+        details.style.fontSize = '14px';
+        details.textContent = `${property.bedrooms || 0} bed, ${property.bathrooms || 0} bath`;
+        contentWrapper.appendChild(details);
+        
+        // Add POI section
+        const poiSection = document.createElement('div');
+        poiSection.style.marginTop = '10px';
+        poiSection.style.borderTop = '1px solid #eee';
+        poiSection.style.paddingTop = '10px';
+        
+        const poiTitle = document.createElement('div');
+        poiTitle.style.fontWeight = 'bold';
+        poiTitle.style.marginBottom = '5px';
+        poiTitle.textContent = 'Find nearby:';
+        poiSection.appendChild(poiTitle);
+        
+        // Create POI buttons
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.id = `poi-buttons-${property.id}`;
+        buttonsContainer.style.display = 'flex';
+        buttonsContainer.style.flexWrap = 'wrap';
+        buttonsContainer.style.gap = '5px';
+        buttonsContainer.style.marginBottom = '5px';
+        
+        const buttonStyle = 'padding: 3px 6px; border-radius: 4px; border: 1px solid #ddd; background: #f5f5f5; font-size: 12px; cursor: pointer;';
+        const poiTypes = [
+          { type: 'restaurant', label: 'Restaurants' },
+          { type: 'grocery_or_supermarket', label: 'Grocery' },
+          { type: 'gym', label: 'Gym' },
+          { type: 'school', label: 'School' },
+          { type: 'park', label: 'Park' }
+        ];
+        
+        poiTypes.forEach(poi => {
+          const button = document.createElement('button');
+          button.className = 'poi-button';
+          button.setAttribute('data-poi', poi.type);
+          button.style.cssText = buttonStyle;
+          button.textContent = poi.label;
+          
+          // Add click handler directly
+          button.onclick = function() {
+            console.log(`Button clicked for ${poi.type}`);
+            searchNearbyPOIs(property, poi.type);
+          };
+          
+          buttonsContainer.appendChild(button);
+        });
+        
+        poiSection.appendChild(buttonsContainer);
+        
+        // Create results container
+        const resultsContainer = document.createElement('div');
+        resultsContainer.id = `poi-results-${property.id}`;
+        resultsContainer.style.fontSize = '12px';
+        resultsContainer.style.maxHeight = '100px';
+        resultsContainer.style.overflowY = 'auto';
+        
+        const placeholderText = document.createElement('p');
+        placeholderText.style.margin = '0';
+        placeholderText.style.color = '#666';
+        placeholderText.textContent = 'Click a category to find nearby places';
+        resultsContainer.appendChild(placeholderText);
+        
+        poiSection.appendChild(resultsContainer);
+        contentWrapper.appendChild(poiSection);
+        
+        // Add the content to the info window
+        customInfoWindow.appendChild(contentWrapper);
         
         // Create info window with custom content
         const infoWindow = new google.maps.InfoWindow({
@@ -238,32 +316,6 @@ export function MapComparison({ properties }: MapComparisonProps) {
           // Open this info window
           infoWindow.open(map, marker);
           setActiveInfoWindow(infoWindow);
-          
-          // Add event listeners to POI buttons after the InfoWindow is opened
-          setTimeout(() => {
-            const buttonsContainer = document.getElementById(`poi-buttons-${property.id}`);
-            if (buttonsContainer) {
-              const buttons = buttonsContainer.querySelectorAll('.poi-button');
-              buttons.forEach(button => {
-                // Use a more direct approach with a function we actually track
-                const clickHandler = function(event: MouseEvent) {
-                  const button = event.currentTarget as HTMLElement;
-                  const poiType = button.getAttribute('data-poi');
-                  if (poiType) {
-                    searchNearbyPOIs(property, poiType);
-                    console.log(`Searching nearby ${poiType} for property ${property.id}`);
-                  }
-                };
-                
-                // Remove existing listeners by cloning the element
-                const newButton = button.cloneNode(true) as HTMLElement;
-                button.parentNode?.replaceChild(newButton, button);
-                
-                // Add the new listener
-                newButton.addEventListener('click', clickHandler);
-              });
-            }
-          }, 500);
         });
         
         newMarkers.push(marker);
