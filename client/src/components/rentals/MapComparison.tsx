@@ -345,19 +345,31 @@ export function MapComparison({ properties }: MapComparisonProps) {
         
         buttonsTable.appendChild(row3);
         
-        // Add event listeners to buttons
-        const addButtonListener = (btn: HTMLButtonElement, poiType: string) => {
-          btn.addEventListener('click', () => {
-            console.log(`Searching for ${poiType} near property ${property.id}`);
-            searchNearbyPOIs(property, poiType);
-          });
+        // Add direct click handlers to the buttons (no event listeners needed)
+        restaurantBtn.onclick = () => {
+          console.log(`Searching for restaurant near property ${property.id}`);
+          searchNearbyPOIs(property, 'restaurant');
         };
         
-        addButtonListener(restaurantBtn, 'restaurant');
-        addButtonListener(groceryBtn, 'grocery_or_supermarket');
-        addButtonListener(gymBtn, 'gym');
-        addButtonListener(schoolBtn, 'school');
-        addButtonListener(parkBtn, 'park');
+        groceryBtn.onclick = () => {
+          console.log(`Searching for grocery near property ${property.id}`);
+          searchNearbyPOIs(property, 'grocery_or_supermarket');
+        };
+        
+        gymBtn.onclick = () => {
+          console.log(`Searching for gym near property ${property.id}`);
+          searchNearbyPOIs(property, 'gym');
+        };
+        
+        schoolBtn.onclick = () => {
+          console.log(`Searching for school near property ${property.id}`);
+          searchNearbyPOIs(property, 'school');
+        };
+        
+        parkBtn.onclick = () => {
+          console.log(`Searching for park near property ${property.id}`);
+          searchNearbyPOIs(property, 'park');
+        };
         
         poiSection.appendChild(buttonsTable);
         
@@ -551,14 +563,25 @@ export function MapComparison({ properties }: MapComparisonProps) {
                   type: poiType
                 };
                 
-                // Create marker for POI
+                // Create marker for POI with different colors for each type
+                const getMarkerColor = (type: string) => {
+                  const colorMap: Record<string, string> = {
+                    restaurant: 'red-dot.png',
+                    grocery_or_supermarket: 'green-dot.png',
+                    gym: 'orange-dot.png',
+                    school: 'purple-dot.png',
+                    park: 'yellow-dot.png'
+                  };
+                  return colorMap[type] || 'blue-dot.png';
+                };
+                
                 const marker = new google.maps.Marker({
                   position: place.geometry.location,
                   map: googleMap,
                   title: place.name,
                   icon: {
-                    url: place.icon || 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                    scaledSize: new google.maps.Size(24, 24)
+                    url: `https://maps.google.com/mapfiles/ms/icons/${getMarkerColor(poiType)}`,
+                    scaledSize: new google.maps.Size(28, 28)
                   }
                 });
                 
@@ -768,13 +791,26 @@ export function MapComparison({ properties }: MapComparisonProps) {
         },
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK && result) {
-            // Create a DirectionsRenderer
+            // Get route color based on POI type
+            const getRouteColor = (poiType: string) => {
+              const colorMap: Record<string, string> = {
+                restaurant: '#e53935', // red
+                grocery_or_supermarket: '#43a047', // green
+                gym: '#fb8c00', // orange
+                school: '#8e24aa', // purple
+                park: '#fdd835', // yellow
+                search_result: '#4285F4' // blue (default Google Maps color)
+              };
+              return colorMap[poiType] || '#4285F4';
+            };
+            
+            // Create a DirectionsRenderer with custom styling
             const directionsRenderer = new google.maps.DirectionsRenderer({
               map: googleMap,
               directions: result,
               suppressMarkers: true, // We'll use our own markers
               polylineOptions: {
-                strokeColor: '#4285F4',
+                strokeColor: getRouteColor(poi.type),
                 strokeWeight: 5,
                 strokeOpacity: 0.7
               }
