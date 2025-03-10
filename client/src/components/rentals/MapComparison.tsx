@@ -160,9 +160,20 @@ export function MapComparison({ properties }: MapComparisonProps) {
       
       setGoogleMap(map);
       
-      // Initialize Places service
-      const places = new google.maps.places.PlacesService(map);
-      setPlacesService(places);
+      // Initialize Places service - ensure it's created properly
+      const placesDiv = document.createElement('div');
+      document.body.appendChild(placesDiv);
+      
+      // Create the places service with a temporary element and then with the map
+      try {
+        console.log("Creating Places service...");
+        const placesTemp = new google.maps.places.PlacesService(placesDiv);
+        const places = new google.maps.places.PlacesService(map);
+        console.log("Places service created successfully");
+        setPlacesService(places);
+      } catch (err) {
+        console.error("Error creating Places service:", err);
+      }
       
       // Initialize Directions service
       const directions = new google.maps.DirectionsService();
@@ -496,6 +507,13 @@ export function MapComparison({ properties }: MapComparisonProps) {
   
   // Function to search for POIs near a property
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
+    // Debug to see what's happening
+    console.log("Searching for POIs with:", { 
+      placesServiceExists: !!placesService, 
+      hasLatitude: !!property.latitude, 
+      hasLongitude: !!property.longitude 
+    });
+    
     // We need to check if both services are available
     if (!placesService || !property.latitude || !property.longitude) {
       console.error("Cannot search POIs - missing required services or property location");
@@ -504,6 +522,17 @@ export function MapComparison({ properties }: MapComparisonProps) {
     
     // Get the current map - we'll use this for markers
     const currentMap = googleMap;
+    
+    // Create a backup PlacesService if needed
+    if (!placesService && currentMap) {
+      console.log("Recreating Places service on demand");
+      try {
+        const newPlacesService = new google.maps.places.PlacesService(currentMap);
+        setPlacesService(newPlacesService);
+      } catch (err) {
+        console.error("Failed to create backup Places service:", err);
+      }
+    }
     
     console.log(`Searching for ${poiType} near property ${property.id}`);
     
@@ -559,8 +588,21 @@ export function MapComparison({ properties }: MapComparisonProps) {
       
       const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
       
-      // Perform a nearby search
-      placesService.nearbySearch(
+      // Make sure we have an active places service
+      const activeService = placesService || (googleMap ? new google.maps.places.PlacesService(googleMap) : null);
+      
+      if (!activeService) {
+        console.error("Places service could not be created or accessed");
+        if (resultsContainer) {
+          resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">Error: Maps services unavailable</p>`;
+        }
+        setSearchingPOIs(false);
+        return;
+      }
+      
+      // Perform a nearby search with specific error handling
+      console.log("Starting nearby search with active service");
+      activeService.nearbySearch(
         {
           location: propertyLocation,
           radius: 2000, // 2km radius
