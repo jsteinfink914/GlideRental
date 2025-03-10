@@ -23,7 +23,13 @@ export interface SearchPOI {
 }
 
 // Global variable to store recent search terms that can be accessed by map components
-export const recentSearchPOIs: SearchPOI[] = [];
+// Initialize with some sample search terms
+export const recentSearchPOIs: SearchPOI[] = [
+  { term: 'Coffee shops', count: 3, timestamp: Date.now() - 1000 * 60 * 10 }, // 10 minutes ago
+  { term: 'Dog parks', count: 2, timestamp: Date.now() - 1000 * 60 * 30 },    // 30 minutes ago
+  { term: 'Yoga studios', count: 1, timestamp: Date.now() - 1000 * 60 * 60 }, // 1 hour ago
+  { term: 'Thai food', count: 5, timestamp: Date.now() - 1000 * 60 * 120 },    // 2 hours ago
+];
 
 // Number of properties per page
 const ITEMS_PER_PAGE = 6;

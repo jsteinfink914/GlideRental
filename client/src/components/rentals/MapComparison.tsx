@@ -382,7 +382,7 @@ export function MapComparison({ properties }: MapComparisonProps) {
           buttonsTable.appendChild(separatorRow);
           
           // Create rows for search terms (2 per row)
-          let searchRow;
+          let searchRow: HTMLTableRowElement | null = null;
           let cellIndex = 0;
           
           // Sort by most recent first
@@ -414,16 +414,22 @@ export function MapComparison({ properties }: MapComparisonProps) {
             searchBtn.classList.add('poi-button');
             
             searchCell.appendChild(searchBtn);
-            searchRow?.appendChild(searchCell);
+            if (searchRow) {
+              searchRow.appendChild(searchCell);
+            }
             
             cellIndex++;
           });
           
           // If we have an odd number and ended with only one cell in the row,
           // add an empty cell to balance the layout
-          if (cellIndex === 1 && searchRow) {
-            const emptyCell = document.createElement('td');
-            searchRow.appendChild(emptyCell);
+          if (cellIndex === 1) { 
+            // Explicitly type searchRow here as HTMLTableRowElement to avoid the error
+            const currentRow: HTMLTableRowElement | null = searchRow;
+            if (currentRow) {
+              const emptyCell = document.createElement('td');
+              currentRow.appendChild(emptyCell);
+            }
           }
         }
         
@@ -515,6 +521,17 @@ export function MapComparison({ properties }: MapComparisonProps) {
         gymBtn.addEventListener('click', handlePOIButtonClick);
         schoolBtn.addEventListener('click', handlePOIButtonClick);
         parkBtn.addEventListener('click', handlePOIButtonClick);
+        
+        // Add event listeners to search term buttons
+        if (recentSearchPOIs.length > 0) {
+          // Wait for buttons to be rendered
+          setTimeout(() => {
+            const searchButtons = document.querySelectorAll(`[id^="search-btn-${property.id}"]`);
+            searchButtons.forEach(btn => {
+              btn.addEventListener('click', handlePOIButtonClick);
+            });
+          }, 100);
+        }
         
         poiSection.appendChild(buttonsTable);
         
@@ -617,6 +634,207 @@ export function MapComparison({ properties }: MapComparisonProps) {
       setMapError('Failed to initialize map');
     }
   }, [googleMapsLoaded, properties, mapView]);
+  
+  // Function to handle search term results
+  const handleSearchResults = (property: Property, searchTerm: string, results: google.maps.places.PlaceResult[]) => {
+    if (!googleMap || !property.latitude || !property.longitude) {
+      console.error("Cannot process search results - missing map or property location");
+      return;
+    }
+    
+    const currentMap = googleMap;
+    const resultsContainer = document.getElementById(`poi-results-${property.id}`);
+    
+    // Custom type for the search results to differentiate them
+    const customType = `search:${searchTerm}`;
+    
+    // Clear any existing POIs with this search term
+    setPois(prevPois => {
+      prevPois
+        .filter(poi => poi.type === customType)
+        .forEach(poi => {
+          if (poi.marker) {
+            poi.marker.setMap(null);
+          }
+        });
+      
+      return prevPois.filter(poi => poi.type !== customType);
+    });
+    
+    // Clear routes for this search term
+    setRoutes(prevRoutes => {
+      // Find which POIs have this type
+      const poiIdsToRemove = new Set<string>();
+      pois.forEach(poi => {
+        if (poi.type === customType) {
+          poiIdsToRemove.add(poi.placeId);
+        }
+      });
+      
+      // Remove routes
+      prevRoutes
+        .filter(route => poiIdsToRemove.has(route.destination))
+        .forEach(route => {
+          if (route.route) {
+            route.route.setMap(null);
+          }
+          if (route.polyline) {
+            route.polyline.setMap(null);
+          }
+        });
+      
+      return prevRoutes.filter(route => !poiIdsToRemove.has(route.destination));
+    });
+    
+    // Get top 3 results
+    const topResults = results.slice(0, 3);
+    
+    if (topResults.length === 0) {
+      if (resultsContainer) {
+        resultsContainer.innerHTML = `<p style="margin: 0; color: #c00;">No "${searchTerm}" found nearby</p>`;
+      }
+      return;
+    }
+    
+    // Create POI markers - use a unique style for search results
+    const newPOIs: POI[] = [];
+    let resultsHTML = '';
+    
+    topResults.forEach((place, index) => {
+      if (place.geometry && place.geometry.location) {
+        // Create POI object
+        const poi: POI = {
+          name: place.name || `${searchTerm} ${index + 1}`,
+          location: place.geometry.location,
+          address: place.formatted_address || '',
+          placeId: place.place_id || '',
+          type: customType // Use our custom type
+        };
+        
+        // Create a unique marker for search results - pink dot 
+        const marker = new google.maps.Marker({
+          position: place.geometry.location,
+          map: currentMap,
+          title: place.name,
+          icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png',
+            scaledSize: new google.maps.Size(28, 28)
+          }
+        });
+        
+        // Create info window with search term attribution
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 5px; max-width: 200px;">
+              <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                <i>Search result for "${searchTerm}"</i>
+              </div>
+              <h3 style="margin: 0; font-size: 14px; margin-bottom: 3px;">${place.name}</h3>
+              <p style="margin: 0; font-size: 12px; margin-bottom: 3px;">${place.formatted_address || ''}</p>
+              <p style="margin: 0; font-size: 12px;">Rating: ${place.rating ? `${place.rating} ⭐` : 'N/A'}</p>
+              <p style="margin: 0; font-size: 12px; margin-top: 5px; font-style: italic;">Click for route details</p>
+            </div>
+          `
+        });
+        
+        // Add click listener to marker
+        marker.addListener('click', () => {
+          // Close any open info window
+          if (activeInfoWindow && activeInfoWindow !== infoWindow) {
+            activeInfoWindow.close();
+          }
+          
+          // Open this info window
+          infoWindow.open(currentMap, marker);
+          setActiveInfoWindow(infoWindow);
+          
+          // Calculate route to this POI
+          calculateRoute(property, poi);
+        });
+        
+        // Store marker with POI
+        poi.marker = marker;
+        newPOIs.push(poi);
+        
+        // Add to results HTML
+        resultsHTML += `
+          <div style="padding: 4px 0; border-bottom: 1px solid #eee; cursor: pointer; background-color: #fef6ff;" class="poi-result" data-place-id="${place.place_id}">
+            <div style="font-weight: bold;">${place.name}</div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px">${place.formatted_address?.substring(0, 25) || ''}${place.formatted_address && place.formatted_address.length > 25 ? '...' : ''}</span>
+              <span>${place.rating ? `${place.rating} ⭐` : ''}</span>
+            </div>
+            <div style="margin-top: 4px; font-size: 11px; color: #666;" id="route-${place.place_id}">
+              Calculating route...
+            </div>
+          </div>
+        `;
+      }
+    });
+    
+    // Update state with new POIs
+    setPois(prevPois => [...prevPois, ...newPOIs]);
+    
+    // If there are POIs found, automatically calculate route to the closest one
+    if (newPOIs.length > 0) {
+      // Calculate route to the first POI immediately
+      calculateRoute(property, newPOIs[0]);
+      
+      // Then calculate routes to all POIs to show distances
+      newPOIs.forEach(poi => {
+        calculateRouteDistanceOnly(property, poi);
+      });
+    }
+    
+    // Update the results container
+    if (resultsContainer) {
+      if (topResults.length > 0) {
+        resultsContainer.innerHTML = resultsHTML;
+        
+        // Add click listeners to result items
+        setTimeout(() => {
+          const resultItems = resultsContainer.querySelectorAll('.poi-result');
+          resultItems.forEach(item => {
+            item.addEventListener('click', () => {
+              const placeId = item.getAttribute('data-place-id');
+              if (placeId) {
+                const poi = newPOIs.find(p => p.placeId === placeId);
+                if (poi && poi.marker) {
+                  // Trigger a click on the marker
+                  google.maps.event.trigger(poi.marker, 'click');
+                }
+              }
+            });
+          });
+        }, 100);
+      }
+    }
+    
+    // Increment the search term's count and update timestamp in recentSearchPOIs
+    const existingIndex = recentSearchPOIs.findIndex(item => item.term.toLowerCase() === searchTerm.toLowerCase());
+    if (existingIndex >= 0) {
+      // Update existing search term
+      recentSearchPOIs[existingIndex] = {
+        ...recentSearchPOIs[existingIndex],
+        count: recentSearchPOIs[existingIndex].count + 1,
+        timestamp: Date.now()
+      };
+    } else {
+      // Add new search term if not found and limit to 10 items
+      recentSearchPOIs.push({
+        term: searchTerm,
+        count: 1,
+        timestamp: Date.now()
+      });
+      
+      // Keep only 10 most recent
+      if (recentSearchPOIs.length > 10) {
+        // Sort by timestamp and remove oldest
+        recentSearchPOIs.sort((a, b) => b.timestamp - a.timestamp);
+        recentSearchPOIs.pop();
+      }
+    }
+  };
   
   // Function to search for POIs near a property
   const searchNearbyPOIs = async (property: Property, poiType: string) => {
