@@ -64,20 +64,45 @@ export function CompareMap({ properties }: CompareMapProps) {
     setPropertyColors(colorMap);
   }, [properties]);
   
+  // Close all InfoWindows
+  const closeAllInfoWindows = () => {
+    infoWindowsRef.current.forEach(infoWindow => infoWindow.close());
+  };
+  
   // Initialize Google Maps
   useEffect(() => {
     const initMap = async () => {
       try {
+        console.log("Loading Google Maps...");
         const google = await loadGoogleMaps();
+        console.log("Google Maps loaded successfully");
         
-        if (!mapRef.current) return;
+        if (!mapRef.current) {
+          console.error("Map container ref is null");
+          return;
+        }
+        
+        console.log("Initializing map with properties:", properties);
         
         // Calculate center point among all properties
         const bounds = new google.maps.LatLngBounds();
+        let hasValidCoords = false;
+        
         properties.forEach(property => {
-          bounds.extend(new google.maps.LatLng(property.latitude, property.longitude));
+          if (property.latitude && property.longitude) {
+            bounds.extend(new google.maps.LatLng(property.latitude, property.longitude));
+            hasValidCoords = true;
+          } else {
+            console.warn(`Property missing coordinates: ${property.title}`);
+          }
         });
         
+        if (!hasValidCoords) {
+          // Default to NYC if no properties have coordinates
+          bounds.extend(new google.maps.LatLng(40.7128, -74.0060));
+        }
+        
+        // Create the map
         const map = new google.maps.Map(mapRef.current, {
           center: bounds.getCenter(),
           zoom: 13,
@@ -90,13 +115,17 @@ export function CompareMap({ properties }: CompareMapProps) {
         
         // Add property markers
         properties.forEach(property => {
+          if (!property.latitude || !property.longitude) return;
+          
+          const color = propertyColors[property.id] || '#4CAF50';
+          
           const marker = new google.maps.Marker({
             position: { lat: property.latitude, lng: property.longitude },
             map,
             title: property.title,
             icon: {
               path: google.maps.SymbolPath.CIRCLE,
-              fillColor: propertyColors[property.id],
+              fillColor: color,
               fillOpacity: 1,
               strokeWeight: 0,
               scale: 8
@@ -106,23 +135,27 @@ export function CompareMap({ properties }: CompareMapProps) {
           const infoWindow = new google.maps.InfoWindow({
             content: `
               <div class="p-2">
-                <h3 class="font-bold">${property.title}</h3>
-                <p>${property.address}</p>
-                <p>$${property.rent}/month</p>
+                <h3 class="font-bold">${property.title || 'Property'}</h3>
+                <p>${property.address || 'No address'}</p>
+                <p>$${property.rent || '0'}/month</p>
               </div>
             `
           });
           
           marker.addListener('click', () => {
-            infoWindowsRef.current.forEach(iw => iw.close());
+            closeAllInfoWindows();
             infoWindow.open(map, marker);
+            infoWindowsRef.current.push(infoWindow);
           });
           
           markersRef.current.push(marker);
-          infoWindowsRef.current.push(infoWindow);
         });
         
+        // Fit map to bounds and add some padding
         map.fitBounds(bounds);
+        
+        // Add event listener to close info windows when clicking on map
+        map.addListener('click', closeAllInfoWindows);
         
         setIsLoadingMap(false);
       } catch (error) {
@@ -131,7 +164,11 @@ export function CompareMap({ properties }: CompareMapProps) {
       }
     };
     
-    initMap();
+    if (properties.length > 0) {
+      initMap();
+    } else {
+      setIsLoadingMap(false);
+    }
     
     return () => {
       // Clean up on unmount
@@ -143,23 +180,53 @@ export function CompareMap({ properties }: CompareMapProps) {
       routesRef.current = [];
       infoWindowsRef.current = [];
     };
-  }, [properties]);
+  }, [properties, propertyColors]);
   
+  // Clear place markers
+  const clearPlaceMarkers = () => {
+    markersRef.current = markersRef.current.filter(marker => {
+      if (marker.get('isPlaceMarker')) {
+        marker.setMap(null);
+        return false;
+      }
+      return true;
+    });
+  };
+  
+  // Clear routes
+  const clearRoutes = () => {
+    // Clear polylines
+    routesRef.current.forEach(route => route.setMap(null));
+    routesRef.current = [];
+  };
+
   // Fetch nearby places when POI type changes
   const fetchNearbyPlaces = async () => {
-    if (!selectedPOIType || !googleMapRef.current) return;
+    if (!selectedPOIType || !googleMapRef.current) {
+      console.warn("Cannot fetch places - map not initialized or POI type not selected");
+      return;
+    }
     
     setIsLoadingPlaces(true);
     
     try {
-      // Clear existing route lines
-      routesRef.current.forEach(route => route.setMap(null));
-      routesRef.current = [];
+      // Clear existing markers and routes
+      clearPlaceMarkers();
+      clearRoutes();
       
       const newNearbyPlaces: {[propertyId: number]: any[]} = {};
       
+      console.log(`Fetching nearby ${selectedPOIType} for ${properties.length} properties`);
+      
       // Get nearby places for each property
       for (const property of properties) {
+        if (!property.latitude || !property.longitude) {
+          console.warn(`Skipping property ${property.id} - missing coordinates`);
+          continue;
+        }
+        
+        console.log(`Fetching for property ${property.id} at ${property.latitude},${property.longitude}`);
+        
         const response = await fetch(
           `/api/nearby-places?lat=${property.latitude}&lng=${property.longitude}&type=${selectedPOIType}`, 
           { method: 'GET' }
@@ -167,13 +234,15 @@ export function CompareMap({ properties }: CompareMapProps) {
         
         if (response.ok) {
           const data = await response.json();
-          newNearbyPlaces[property.id] = data.places || [];
+          console.log(`Found ${data.places?.length || 0} places near property ${property.id}`, data.places);
           
-          // Add markers for the places
           if (data.places && data.places.length > 0) {
-            const place = data.places[0]; // Get the first/closest place
+            newNearbyPlaces[property.id] = data.places;
             
-            // Only plot the closest place to each property
+            // Get the closest place (first in the array - they're already sorted by distance on the server)
+            const place = data.places[0];
+            
+            // Create marker for the place
             const placeMarker = new google.maps.Marker({
               position: { lat: place.lat, lng: place.lng },
               map: googleMapRef.current,
@@ -183,34 +252,85 @@ export function CompareMap({ properties }: CompareMapProps) {
               }
             });
             
+            // Mark this marker as a place marker so we can clear it later
+            placeMarker.set('isPlaceMarker', true);
+            
+            // Add info window for the place
+            const infoWindow = new google.maps.InfoWindow({
+              content: `
+                <div class="p-2">
+                  <h3 class="font-bold">${place.name}</h3>
+                  <p>${place.address || ''}</p>
+                  <p>Distance: ${place.distance || 'N/A'}</p>
+                  ${place.rating ? `<p>Rating: ${place.rating} ⭐</p>` : ''}
+                </div>
+              `
+            });
+            
+            placeMarker.addListener('click', () => {
+              closeAllInfoWindows();
+              infoWindow.open(googleMapRef.current, placeMarker);
+              infoWindowsRef.current.push(infoWindow);
+            });
+            
             markersRef.current.push(placeMarker);
             
-            // Get route from property to place
-            const route = await calculateRoute(
-              { lat: property.latitude, lng: property.longitude },
-              { lat: place.lat, lng: place.lng }
-            );
-            
-            if (route) {
-              // Draw route on map
-              const routePath = new google.maps.Polyline({
-                path: route.route,
-                geodesic: true,
-                strokeColor: propertyColors[property.id],
-                strokeOpacity: 0.7,
-                strokeWeight: 3
-              });
+            // Draw route from property to place
+            console.log(`Drawing route from property ${property.id} to ${place.name}`);
+            try {
+              const route = await calculateRoute(
+                { lat: property.latitude, lng: property.longitude },
+                { lat: place.lat, lng: place.lng }
+              );
               
-              routePath.setMap(googleMapRef.current);
-              routesRef.current.push(routePath);
-              
-              // Store route info
-              setSelectedRoutes(prev => ({
-                ...prev,
-                [property.id]: route
-              }));
+              if (route && route.route && route.route.length > 0) {
+                console.log(`Route calculated successfully:`, route);
+                
+                // Draw route on map
+                const routePath = new google.maps.Polyline({
+                  path: route.route,
+                  geodesic: true,
+                  strokeColor: propertyColors[property.id] || '#4CAF50',
+                  strokeOpacity: 0.7,
+                  strokeWeight: 5
+                });
+                
+                routePath.setMap(googleMapRef.current);
+                routesRef.current.push(routePath);
+                
+                // Add a label with time in the middle of the route
+                const midpointIndex = Math.floor(route.route.length / 2);
+                const midpoint = route.route[midpointIndex];
+                
+                const timeInfoWindow = new google.maps.InfoWindow({
+                  content: `
+                    <div class="p-1 text-center">
+                      <p class="font-bold">🚶 ${route.duration}</p>
+                    </div>
+                  `,
+                  position: midpoint,
+                  pixelOffset: new google.maps.Size(0, -15)
+                });
+                
+                timeInfoWindow.open(googleMapRef.current);
+                infoWindowsRef.current.push(timeInfoWindow);
+                
+                // Store route info for display in the results panel
+                setSelectedRoutes(prev => ({
+                  ...prev,
+                  [property.id]: route
+                }));
+              } else {
+                console.warn(`No route found for property ${property.id} to ${place.name}`);
+              }
+            } catch (routeError) {
+              console.error('Error calculating route:', routeError);
             }
+          } else {
+            console.warn(`No ${selectedPOIType} found near property ${property.id}`);
           }
+        } else {
+          console.error(`API error for property ${property.id}:`, await response.text());
         }
       }
       
@@ -226,95 +346,110 @@ export function CompareMap({ properties }: CompareMapProps) {
     <Card className="w-full mb-8">
       <CardHeader>
         <CardTitle>Compare Routes & Distances</CardTitle>
+        <p className="text-muted-foreground">Find nearby places and analyze travel times for your saved properties</p>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="w-full md:w-2/3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
             <div 
               ref={mapRef} 
-              className="w-full h-96 rounded-md bg-muted/50"
-              style={{ minHeight: '400px' }}
+              className="w-full h-[500px] rounded-md bg-muted/50 relative"
             >
               {isLoadingMap && (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="ml-2">Loading map...</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                    <span>Loading map...</span>
+                  </div>
                 </div>
               )}
             </div>
           </div>
           
-          <div className="w-full md:w-1/3 space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Find Nearby</label>
-              <Select 
-                value={selectedPOIType} 
-                onValueChange={(value) => setSelectedPOIType(value as POIType)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {poiTypeOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Button 
-                onClick={fetchNearbyPlaces} 
-                className="w-full mt-2"
-                disabled={isLoadingPlaces}
-              >
-                {isLoadingPlaces ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Finding places...
-                  </>
-                ) : (
-                  `Find Nearest ${selectedPOIType.charAt(0).toUpperCase() + selectedPOIType.slice(1)}`
-                )}
-              </Button>
+          <div className="space-y-6">
+            <div className="bg-muted/30 p-4 rounded-lg space-y-4">
+              <h3 className="font-medium">Find Nearby Places</h3>
+              <div className="space-y-2">
+                <label className="text-sm font-medium mb-1 block">Place Type</label>
+                <Select 
+                  value={selectedPOIType} 
+                  onValueChange={(value) => setSelectedPOIType(value as POIType)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {poiTypeOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button 
+                  onClick={fetchNearbyPlaces} 
+                  className="w-full mt-2"
+                  disabled={isLoadingPlaces}
+                >
+                  {isLoadingPlaces ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Finding places...
+                    </>
+                  ) : (
+                    `Find Nearest ${selectedPOIType.charAt(0).toUpperCase() + selectedPOIType.slice(1)}`
+                  )}
+                </Button>
+              </div>
             </div>
             
             {/* Distance results */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h3 className="font-medium">Distance Results</h3>
               
-              {properties.map(property => (
-                <div key={property.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: propertyColors[property.id] }}
-                    ></div>
-                    <span className="font-medium">{property.title}</span>
-                  </div>
-                  
-                  {selectedRoutes[property.id] ? (
-                    <div className="text-sm space-y-1">
-                      <p>
-                        <span className="font-medium">Distance:</span>{' '}
-                        {selectedRoutes[property.id]?.distance}
-                      </p>
-                      <p>
-                        <span className="font-medium">Est. Time:</span>{' '}
-                        {selectedRoutes[property.id]?.duration}
-                      </p>
-                      <p>
-                        <span className="font-medium">To:</span>{' '}
-                        {nearbyPlaces[property.id]?.[0]?.name || 'N/A'}
-                      </p>
-                    </div>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">
-                      Select a place type and click "Find Nearest"
-                    </Badge>
-                  )}
+              {properties.length === 0 ? (
+                <div className="text-center p-4 border rounded-lg bg-muted/20">
+                  <p className="text-sm text-muted-foreground">No properties selected for comparison</p>
                 </div>
-              ))}
+              ) : (
+                properties.map(property => (
+                  <div key={property.id} className="p-4 border rounded-lg bg-background shadow-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: propertyColors[property.id] }}
+                      ></div>
+                      <span className="font-medium truncate">{property.title}</span>
+                    </div>
+                    
+                    {selectedRoutes[property.id] ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Distance:</span>
+                          <span className="font-medium">{selectedRoutes[property.id]?.distance}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Travel Time:</span>
+                          <span className="font-medium">{selectedRoutes[property.id]?.duration}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Destination:</span>
+                          <span className="font-medium truncate max-w-[150px]">
+                            {nearbyPlaces[property.id]?.[0]?.name || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-3">
+                        <Badge variant="outline" className="text-xs">
+                          Click "Find Nearest" to show results
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

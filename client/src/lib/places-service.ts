@@ -161,7 +161,8 @@ export async function calculateRoute(
   mode: 'WALKING' | 'DRIVING' | 'TRANSIT' | 'BICYCLING' = 'WALKING'
 ): Promise<RouteInfo | undefined> {
   try {
-    const response = await fetch('/api/routes', {
+    // Use Google Maps Directions API directly through our server proxy
+    const response = await fetch(`/api/routes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -177,7 +178,9 @@ export async function calculateRoute(
       throw new Error(`HTTP error ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log("Route calculation result:", data);
+    return data;
   } catch (error) {
     console.error('Error calculating route:', error);
     return undefined;
