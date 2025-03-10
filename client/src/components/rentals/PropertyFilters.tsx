@@ -134,7 +134,7 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
         <h3 className="font-medium mb-3">Price Range</h3>
         <div className="space-y-4">
           <Slider
-            defaultValue={[tempFilters.minRent || 1000, tempFilters.maxRent || 5000]}
+            value={[tempFilters.minRent || 0, tempFilters.maxRent || 10000]}
             min={0}
             max={10000}
             step={100}
@@ -145,8 +145,17 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
               <Label htmlFor="min-price">Min Price</Label>
               <Input
                 id="min-price"
-                value={tempFilters.minRent || ""}
-                onChange={(e) => setTempFilters({ ...tempFilters, minRent: parseInt(e.target.value) || undefined })}
+                value={tempFilters.minRent ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or valid number input
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setTempFilters({ 
+                      ...tempFilters, 
+                      minRent: value === '' ? undefined : parseInt(value) 
+                    });
+                  }
+                }}
                 placeholder="$0"
               />
             </div>
@@ -154,8 +163,17 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
               <Label htmlFor="max-price">Max Price</Label>
               <Input
                 id="max-price"
-                value={tempFilters.maxRent || ""}
-                onChange={(e) => setTempFilters({ ...tempFilters, maxRent: parseInt(e.target.value) || undefined })}
+                value={tempFilters.maxRent ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or valid number input
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setTempFilters({
+                      ...tempFilters,
+                      maxRent: value === '' ? undefined : parseInt(value)
+                    });
+                  }
+                }}
                 placeholder="No max"
               />
             </div>

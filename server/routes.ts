@@ -66,9 +66,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties endpoints - No authentication required to view properties
   app.get("/api/properties", async (req, res) => {
     try {
-      console.log("Fetching properties");
-      const properties = await storage.getProperties();
-      console.log(`Returning ${properties.length} properties`);
+      console.log("Fetching properties with query params:", req.query);
+      
+      // Extract filter parameters from query string
+      const filters: any = {};
+      
+      // Handle basic filters
+      if (req.query.neighborhood && req.query.neighborhood !== 'any') {
+        filters.neighborhood = req.query.neighborhood;
+      }
+      
+      if (req.query.bedrooms && req.query.bedrooms !== 'any') {
+        filters.bedrooms = parseInt(req.query.bedrooms as string);
+      }
+      
+      if (req.query.bathrooms && req.query.bathrooms !== 'any') {
+        filters.bathrooms = parseFloat(req.query.bathrooms as string);
+      }
+      
+      if (req.query.propertyType && req.query.propertyType !== 'any') {
+        filters.propertyType = req.query.propertyType;
+      }
+      
+      // Boolean filters
+      if (req.query.hasInUnitLaundry === 'true') filters.hasInUnitLaundry = true;
+      if (req.query.hasDishwasher === 'true') filters.hasDishwasher = true;
+      if (req.query.petFriendly === 'true') filters.petFriendly = true;
+      if (req.query.hasDoorman === 'true') filters.hasDoorman = true;
+      if (req.query.hasVirtualTour === 'true') filters.hasVirtualTour = true;
+      if (req.query.noFee === 'true') filters.noFee = true;
+      
+      // Special handling for price range since it's not a direct property match
+      const minRent = req.query.minRent ? parseInt(req.query.minRent as string) : undefined;
+      const maxRent = req.query.maxRent ? parseInt(req.query.maxRent as string) : undefined;
+      
+      // Get base properties first
+      let properties = await storage.getProperties(filters);
+      
+      // Apply price range filtering manually if needed
+      if (minRent !== undefined || maxRent !== undefined) {
+        properties = properties.filter(property => {
+          let meetsMinCriteria = true;
+          let meetsMaxCriteria = true;
+          
+          if (minRent !== undefined) {
+            meetsMinCriteria = property.rent >= minRent;
+          }
+          
+          if (maxRent !== undefined) {
+            meetsMaxCriteria = property.rent <= maxRent;
+          }
+          
+          return meetsMinCriteria && meetsMaxCriteria;
+        });
+      }
+      
+      console.log(`Returning ${properties.length} properties after filtering`);
       res.json(properties);
     } catch (error) {
       console.error("Error fetching properties:", error);
