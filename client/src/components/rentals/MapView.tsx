@@ -4,7 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { X, Search } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
+import { calculateRoute } from "@/lib/places-service";
 
 interface MapViewProps {
   properties: Property[];
@@ -17,6 +20,15 @@ interface MapViewProps {
     radius: number;
     score: number;
   }[];
+}
+
+interface POI {
+  name: string;
+  lat: number;
+  lng: number;
+  placeId?: string;
+  distance?: string;
+  rating?: number;
 }
 
 export default function MapView({ 
