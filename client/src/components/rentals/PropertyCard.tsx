@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import QuickApply from "./QuickApply";
+import { useState, useEffect } from "react";
 
 interface PropertyCardProps {
   property: Property;
@@ -18,6 +19,15 @@ interface PropertyCardProps {
 export function PropertyCard({ property, isSaved = false, savedId, onSelect }: PropertyCardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  // Local state to track saved status
+  const [isPropertySaved, setIsPropertySaved] = useState(isSaved);
+  const [localSavedId, setLocalSavedId] = useState(savedId);
+  
+  // Update local state when props change
+  useEffect(() => {
+    setIsPropertySaved(isSaved);
+    setLocalSavedId(savedId);
+  }, [isSaved, savedId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -26,7 +36,11 @@ export function PropertyCard({ property, isSaved = false, savedId, onSelect }: P
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update local state immediately
+      setIsPropertySaved(true);
+      setLocalSavedId(data.id);
+      // Then invalidate the query to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/saved-properties"] });
       toast({
         title: "Property saved",
@@ -44,9 +58,13 @@ export function PropertyCard({ property, isSaved = false, savedId, onSelect }: P
 
   const unsaveMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("DELETE", `/api/saved-properties/${savedId}`);
+      await apiRequest("DELETE", `/api/saved-properties/${localSavedId}`);
     },
     onSuccess: () => {
+      // Update local state immediately
+      setIsPropertySaved(false);
+      setLocalSavedId(undefined);
+      // Then invalidate the query to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/saved-properties"] });
       toast({
         title: "Property removed",
@@ -63,7 +81,7 @@ export function PropertyCard({ property, isSaved = false, savedId, onSelect }: P
   });
 
   const handleSaveClick = () => {
-    if (isSaved) {
+    if (isPropertySaved) {
       unsaveMutation.mutate();
     } else {
       saveMutation.mutate();
@@ -85,7 +103,7 @@ export function PropertyCard({ property, isSaved = false, savedId, onSelect }: P
             disabled={saveMutation.isPending || unsaveMutation.isPending}
           >
             <Heart
-              className={`h-5 w-5 ${isSaved ? "fill-destructive text-destructive" : "text-muted-foreground"}`}
+              className={`h-5 w-5 ${isPropertySaved ? "fill-destructive text-destructive" : "text-muted-foreground"}`}
             />
           </Button>
         </div>

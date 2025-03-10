@@ -15,7 +15,11 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<Omit<User, "password">, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<Omit<User, "password">, Error, RegisterData>;
+  registerMutation: UseMutationResult<
+    Omit<User, "password">,
+    Error,
+    RegisterData
+  >;
 };
 
 // Login requires username/email and password
@@ -31,7 +35,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  
+
   const {
     data: user,
     error,

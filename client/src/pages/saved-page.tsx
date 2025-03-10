@@ -8,15 +8,25 @@ import RentalTabs from "@/components/layout/RentalTabs";
 import PropertyGrid from "@/components/rentals/PropertyGrid";
 import { useMap } from "@/hooks/use-map";
 import { Loader2 } from "lucide-react";
+import { Link } from "wouter";
+
+// Check if we're in development mode
+const DEVELOPMENT_MODE = true;
 
 export default function SavedPage() {
   const { user } = useAuth();
   const { selectProperty } = useMap();
 
-  // Fetch saved properties
+  // Log development mode in browser console
+  if (DEVELOPMENT_MODE) {
+    console.log("Development mode: Bypassing authentication for", "/saved");
+  }
+
+  // Fetch saved properties (always enabled in dev mode)
   const { data: savedProperties, isLoading: isLoadingSaved } = useQuery<{savedId: number; property: Property}[]>({
     queryKey: ['/api/saved-properties'],
-    enabled: !!user
+    // In development mode, we always fetch saved properties
+    enabled: DEVELOPMENT_MODE || !!user
   });
 
   const handlePropertySelect = (property: Property) => {
@@ -49,20 +59,20 @@ export default function SavedPage() {
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : savedProperties?.length === 0 ? (
+            ) : !savedProperties || savedProperties.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <div className="material-icons text-4xl text-text-light mb-2">bookmarks</div>
                 <h3 className="font-medium text-lg mb-2">No saved properties yet</h3>
                 <p className="text-text-medium mb-4">
                   Save properties to compare and keep track of the places you love.
                 </p>
-                <a href="/search" className="text-primary font-medium">
+                <Link href="/search" className="text-primary font-medium">
                   Start browsing
-                </a>
+                </Link>
               </div>
             ) : (
               <PropertyGrid 
-                properties={savedProperties?.map(item => item.property) || []}
+                properties={savedProperties.map(item => item.property)}
                 savedProperties={savedProperties}
                 isLoading={isLoadingSaved}
                 onSelectProperty={handlePropertySelect}
@@ -71,6 +81,13 @@ export default function SavedPage() {
           </div>
         </main>
       </div>
+
+      {/* Development Mode Indicator */}
+      {DEVELOPMENT_MODE && (
+        <div className="fixed bottom-4 right-4 bg-black/70 text-white px-2 py-1 text-xs rounded-md z-50">
+          DEV MODE
+        </div>
+      )}
 
       <MobileNavigation />
     </div>
