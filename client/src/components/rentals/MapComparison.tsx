@@ -562,11 +562,10 @@ export function MapComparison({ properties }: MapComparisonProps) {
           // If we have an odd number and ended with only one cell in the row,
           // add an empty cell to balance the layout
           if (cellIndex === 1) { 
-            // Explicitly type searchRow here as HTMLTableRowElement to avoid the error
-            const currentRow: HTMLTableRowElement | null = searchRow;
-            if (currentRow) {
+            // If searchRow is not null, ensure it's a proper HTMLTableRowElement
+            if (searchRow && searchRow instanceof HTMLTableRowElement) {
               const emptyCell = document.createElement('td');
-              currentRow.appendChild(emptyCell);
+              searchRow.appendChild(emptyCell);
             }
           }
         }
@@ -1217,6 +1216,8 @@ export function MapComparison({ properties }: MapComparisonProps) {
   
   // These route calculation functions were moved to the top of the component 
   // to fix TypeScript errors with function hoisting
+  
+  // Note: Duplicate function declarations were removed from here
   
   // Function to toggle between map and static view
   const toggleMapView = () => {
