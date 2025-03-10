@@ -345,31 +345,116 @@ export function MapComparison({ properties }: MapComparisonProps) {
         
         buttonsTable.appendChild(row3);
         
-        // Add direct click handlers to the buttons (no event listeners needed)
-        restaurantBtn.onclick = () => {
-          console.log(`Searching for restaurant near property ${property.id}`);
-          searchNearbyPOIs(property, 'restaurant');
+        // Create a closure to keep reference to the map and services
+        const createClickHandler = (poiType: string) => {
+          return () => {
+            // Get the current map and places service from the infoWindow
+            if (!map || !placesService) {
+              console.error("Map services not initialized. Try again in a moment.");
+              return;
+            }
+            
+            console.log(`Searching for ${poiType} near property ${property.id}`);
+            
+            // Use map and placesService from the parent scope
+            const propertyLocation = new google.maps.LatLng(
+              property.latitude ?? 0, 
+              property.longitude ?? 0
+            );
+            
+            if (!property.latitude || !property.longitude) {
+              console.error("Property has no valid coordinates");
+              return;
+            }
+            
+            // Use the global placesService and map instead of local function variables
+            placesService.nearbySearch(
+              {
+                location: propertyLocation,
+                radius: 2000,
+                type: poiType
+              },
+              (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                  console.log(`Found ${results.length} ${poiType}s near property`);
+                  
+                  // Get top 3 results
+                  const topResults = results.slice(0, 3);
+                  
+                  // Keep existing POIs but clear markers of this type
+                  setPois(prevPois => {
+                    // Only remove markers of the same type
+                    prevPois
+                      .filter(poi => poi.type === poiType)
+                      .forEach(poi => {
+                        if (poi.marker) {
+                          poi.marker.setMap(null);
+                        }
+                      });
+                    
+                    // Keep all POIs except those of the current type
+                    return prevPois.filter(poi => poi.type !== poiType);
+                  });
+                  
+                  // Create POI markers
+                  const newPOIs: POI[] = [];
+                  
+                  // Process results
+                  topResults.forEach((place, index) => {
+                    if (place.geometry && place.geometry.location) {
+                      const getMarkerColor = (type: string) => {
+                        const colorMap: Record<string, string> = {
+                          restaurant: 'red-dot.png',
+                          grocery_or_supermarket: 'green-dot.png',
+                          gym: 'orange-dot.png',
+                          school: 'purple-dot.png',
+                          park: 'yellow-dot.png'
+                        };
+                        return colorMap[type] || 'blue-dot.png';
+                      };
+                      
+                      // Create POI object
+                      const poi: POI = {
+                        name: place.name || `${poiType} ${index + 1}`,
+                        location: place.geometry.location,
+                        address: place.vicinity || '',
+                        placeId: place.place_id || '',
+                        type: poiType
+                      };
+                      
+                      // Create marker for POI
+                      const marker = new google.maps.Marker({
+                        position: place.geometry.location,
+                        map: map,
+                        title: place.name,
+                        icon: {
+                          url: `https://maps.google.com/mapfiles/ms/icons/${getMarkerColor(poiType)}`,
+                          scaledSize: new google.maps.Size(28, 28)
+                        }
+                      });
+                      
+                      // Store marker with POI
+                      poi.marker = marker;
+                      newPOIs.push(poi);
+                    }
+                  });
+                  
+                  // Update state with new POIs
+                  setPois(prevPois => [...prevPois, ...newPOIs]);
+                } else {
+                  console.error(`Error finding ${poiType}s: ${status}`);
+                }
+              }
+            );
+          };
         };
         
-        groceryBtn.onclick = () => {
-          console.log(`Searching for grocery near property ${property.id}`);
-          searchNearbyPOIs(property, 'grocery_or_supermarket');
-        };
-        
-        gymBtn.onclick = () => {
-          console.log(`Searching for gym near property ${property.id}`);
-          searchNearbyPOIs(property, 'gym');
-        };
-        
-        schoolBtn.onclick = () => {
-          console.log(`Searching for school near property ${property.id}`);
-          searchNearbyPOIs(property, 'school');
-        };
-        
-        parkBtn.onclick = () => {
-          console.log(`Searching for park near property ${property.id}`);
-          searchNearbyPOIs(property, 'park');
-        };
+        // Add direct click handlers with the closure
+        restaurantBtn.onclick = createClickHandler('restaurant');
+        groceryBtn.onclick = createClickHandler('grocery_or_supermarket');
+        gymBtn.onclick = createClickHandler('gym');
+        schoolBtn.onclick = createClickHandler('school');
+        parkBtn.onclick = createClickHandler('park');
         
         poiSection.appendChild(buttonsTable);
         
