@@ -31,6 +31,7 @@ interface RouteInfo {
   distance?: string;
   duration?: string;
   polyline?: google.maps.Polyline;
+  infoWindow?: google.maps.InfoWindow;
 }
 
 export function MapComparison({ properties }: MapComparisonProps) {
