@@ -212,7 +212,8 @@ export default function MapView({
       });
     }
     
-  }, [map, properties, selectedProperty, infoWindow, aiFilterActive, aiFilteredPropertyIds, highlightedAreas, mapInitialized, isLoading, markers]);
+  // Remove markers from dependencies array to prevent infinite loop
+  }, [map, properties, selectedProperty, infoWindow, aiFilterActive, aiFilteredPropertyIds, highlightedAreas, mapInitialized, isLoading]);
   
   // Update zoom when map zoom controls are used
   useEffect(() => {
