@@ -44,14 +44,8 @@ export default function MapView({
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [poiMarkers, setPoiMarkers] = useState<google.maps.Marker[]>([]);
-  const [routeLines, setRouteLines] = useState<google.maps.Polyline[]>([]);
-  const [routeInfoWindows, setRouteInfoWindows] = useState<google.maps.InfoWindow[]>([]);
   const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [nearbyPOIs, setNearbyPOIs] = useState<{[propertyId: number]: POI}>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
   
