@@ -51,6 +51,144 @@ export function MapComparison({ properties }: MapComparisonProps) {
   const [searchingPOIs, setSearchingPOIs] = useState(false);
   const [calculatingRoutes, setCalculatingRoutes] = useState(false);
   
+  // Function declarations - moving these up so they're defined before being used
+  const calculateRouteDistanceOnly = async (property: Property, poi: POI) => {
+    // Skip if we don't have the required services
+    if (!directionsService || !googleMap || !property.latitude || !property.longitude) {
+      console.error("Missing required services for route calculation");
+      return;
+    }
+    
+    try {
+      const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+      
+      // Calculate route
+      const response = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+        directionsService.route({
+          origin: propertyLocation,
+          destination: poi.location,
+          travelMode: google.maps.TravelMode.DRIVING
+        }, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            resolve(result);
+          } else {
+            reject(status);
+          }
+        });
+      });
+      
+      // Update the route info in the UI
+      if (response.routes.length > 0) {
+        const route = response.routes[0];
+        const leg = route.legs[0];
+        
+        // Update distance and duration in the UI
+        const distanceElem = document.getElementById(`route-${poi.placeId}`);
+        if (distanceElem) {
+          distanceElem.textContent = `${leg.distance?.text || 'Unknown distance'}, ${leg.duration?.text || 'Unknown time'}`;
+        }
+      }
+    } catch (error) {
+      console.error("Error calculating route distance:", error);
+      // Silently fail - this is just for informational purposes
+    }
+  };
+  
+  const calculateRoute = async (property: Property, poi: POI) => {
+    if (!directionsService || !googleMap || !property.latitude || !property.longitude) {
+      console.error("Missing required services for route calculation");
+      return;
+    }
+    
+    try {
+      setCalculatingRoutes(true);
+      
+      // Find and clear any existing route for this property-POI pair
+      setRoutes(prevRoutes => {
+        const existingRoute = prevRoutes.find(r => r.origin === property.id && r.destination === poi.placeId);
+        if (existingRoute) {
+          // Clear existing renderer
+          if (existingRoute.route) {
+            existingRoute.route.setMap(null);
+          }
+          if (existingRoute.polyline) {
+            existingRoute.polyline.setMap(null);
+          }
+        }
+        return prevRoutes.filter(r => !(r.origin === property.id && r.destination === poi.placeId));
+      });
+      
+      const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
+      
+      // Calculate route
+      const response = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+        directionsService.route({
+          origin: propertyLocation,
+          destination: poi.location,
+          travelMode: google.maps.TravelMode.DRIVING
+        }, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            resolve(result);
+          } else {
+            reject(status);
+          }
+        });
+      });
+      
+      // Create a renderer for the route
+      const directionsRenderer = new google.maps.DirectionsRenderer({
+        map: googleMap,
+        suppressMarkers: true, // Don't show default markers
+        preserveViewport: true, // Don't move the map view
+        polylineOptions: {
+          strokeColor: "#4285F4", 
+          strokeWeight: 5,
+          strokeOpacity: 0.7
+        }
+      });
+      
+      // Display the route
+      directionsRenderer.setDirections(response);
+      
+      // Extract route info
+      let distance = "Unknown";
+      let duration = "Unknown";
+      if (response.routes.length > 0) {
+        const route = response.routes[0];
+        const leg = route.legs[0];
+        distance = leg.distance?.text || 'Unknown distance';
+        duration = leg.duration?.text || 'Unknown time';
+      }
+      
+      // Add to routes state
+      const newRoute: RouteInfo = {
+        origin: property.id,
+        destination: poi.placeId,
+        route: directionsRenderer,
+        distance,
+        duration
+      };
+      
+      setRoutes(prevRoutes => [...prevRoutes, newRoute]);
+      
+      // Update all POI results with the route info
+      const routeInfoElems = document.querySelectorAll(`[id="route-${poi.placeId}"]`);
+      routeInfoElems.forEach(elem => {
+        elem.textContent = `${distance}, ${duration}`;
+      });
+      
+    } catch (error) {
+      console.error("Error calculating route:", error);
+      // Display error in the route info elements
+      const routeInfoElems = document.querySelectorAll(`[id="route-${poi.placeId}"]`);
+      routeInfoElems.forEach(elem => {
+        elem.textContent = `Unable to calculate route`;
+      });
+    } finally {
+      setCalculatingRoutes(false);
+    }
+  };
+  
   // Fetch the Google Maps API key
   const { data: apiKeyData, isLoading: apiKeyLoading, error: apiKeyError } = useQuery({
     queryKey: ['/api/maps-key'],
@@ -1077,224 +1215,8 @@ export function MapComparison({ properties }: MapComparisonProps) {
     }
   };
   
-  // Calculate route distance and time without drawing the route (for list display)
-  const calculateRouteDistanceOnly = async (property: Property, poi: POI) => {
-    if (!directionsService || !googleMap || !property.latitude || !property.longitude) return;
-    
-    try {
-      const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
-      
-      // Request directions
-      directionsService.route(
-        {
-          origin: propertyLocation,
-          destination: { placeId: poi.placeId },
-          travelMode: google.maps.TravelMode.DRIVING
-        },
-        (result, status) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            // Get route details
-            const route = result.routes[0].legs[0];
-            const distance = route.distance?.text || 'Unknown';
-            const duration = route.duration?.text || 'Unknown';
-            
-            // Find the route info element and update it
-            const routeInfoElement = document.getElementById(`route-${poi.placeId}`);
-            if (routeInfoElement) {
-              routeInfoElement.innerHTML = `
-                <span style="display: inline-block; margin-right: 8px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg> 
-                  ${duration}
-                </span>
-                <span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;">
-                    <path d="M12 22s-8-4.5-8-11.8a8 8 0 1 1 16 0c0 7.3-8 11.8-8 11.8z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg> 
-                  ${distance}
-                </span>
-              `;
-            }
-            
-            // Update the poi with distance and duration
-            setPois(prevPois => 
-              prevPois.map(p => 
-                p.placeId === poi.placeId 
-                  ? { ...p, distance, duration } 
-                  : p
-              )
-            );
-          } else {
-            // Show error in route info
-            const routeInfoElement = document.getElementById(`route-${poi.placeId}`);
-            if (routeInfoElement) {
-              routeInfoElement.innerHTML = `<span style="color: #c00;">Error calculating route</span>`;
-            }
-          }
-        }
-      );
-    } catch (error) {
-      console.error('Error calculating route distance:', error);
-    }
-  };
-  
-  // Calculate route between property and POI with visual display
-  const calculateRoute = async (property: Property, poi: POI) => {
-    if (!directionsService || !googleMap || !property.latitude || !property.longitude) {
-      console.error("Cannot calculate route - missing required services or property location");
-      return;
-    }
-    
-    try {
-      setCalculatingRoutes(true);
-      
-      // Check if we already have a route for this POI
-      const existingRouteIndex = routes.findIndex(route => route.destination === poi.placeId);
-      
-      // If we have an existing route, remove it
-      if (existingRouteIndex >= 0) {
-        const existingRoute = routes[existingRouteIndex];
-        if (existingRoute.route) {
-          existingRoute.route.setMap(null);
-        }
-        if (existingRoute.polyline) {
-          existingRoute.polyline.setMap(null);
-        }
-        
-        // Remove this route from state
-        setRoutes(prevRoutes => 
-          prevRoutes.filter(route => route.destination !== poi.placeId)
-        );
-      }
-      
-      const propertyLocation = new google.maps.LatLng(property.latitude, property.longitude);
-      
-      // Request directions
-      directionsService.route(
-        {
-          origin: propertyLocation,
-          destination: { placeId: poi.placeId },
-          travelMode: google.maps.TravelMode.DRIVING
-        },
-        (result, status) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            // Get route color based on POI type
-            const getRouteColor = (poiType: string) => {
-              const colorMap: Record<string, string> = {
-                restaurant: '#e53935', // red
-                grocery_or_supermarket: '#43a047', // green
-                gym: '#fb8c00', // orange
-                school: '#8e24aa', // purple
-                park: '#fdd835', // yellow
-                search_result: '#4285F4' // blue (default Google Maps color)
-              };
-              return colorMap[poiType] || '#4285F4';
-            };
-            
-            // Create a DirectionsRenderer with custom styling
-            const directionsRenderer = new google.maps.DirectionsRenderer({
-              map: googleMap,
-              directions: result,
-              suppressMarkers: true, // We'll use our own markers
-              polylineOptions: {
-                strokeColor: getRouteColor(poi.type),
-                strokeWeight: 5,
-                strokeOpacity: 0.7
-              }
-            });
-            
-            // Get route details
-            const route = result.routes[0].legs[0];
-            const distance = route.distance?.text || 'Unknown';
-            const duration = route.duration?.text || 'Unknown';
-            
-            // Update POI info window with route information
-            if (poi.marker) {
-              const infoWindow = new google.maps.InfoWindow({
-                content: `
-                  <div style="padding: 5px; max-width: 200px;">
-                    <h3 style="margin: 0; font-size: 14px; margin-bottom: 3px;">${poi.name}</h3>
-                    <p style="margin: 0; font-size: 12px; margin-bottom: 3px;">${poi.address || ''}</p>
-                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
-                      <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 2px;">
-                        <span style="color: #666; font-size: 12px;">Distance:</span>
-                        <strong style="font-size: 12px;">${distance}</strong>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 5px;">
-                        <span style="color: #666; font-size: 12px;">Travel time:</span>
-                        <strong style="font-size: 12px;">${duration}</strong>
-                      </div>
-                    </div>
-                  </div>
-                `
-              });
-              
-              // Close the existing info window for this POI
-              if (activeInfoWindow) {
-                activeInfoWindow.close();
-              }
-              
-              // Open the updated info window
-              infoWindow.open(googleMap, poi.marker);
-              setActiveInfoWindow(infoWindow);
-            }
-            
-            // Add route to state
-            setRoutes(prevRoutes => [
-              ...prevRoutes,
-              {
-                origin: property.id,
-                destination: poi.placeId,
-                route: directionsRenderer,
-                distance,
-                duration
-              }
-            ]);
-            
-            // Update the poi with distance and duration
-            setPois(prevPois => 
-              prevPois.map(p => 
-                p.placeId === poi.placeId 
-                  ? { ...p, distance, duration } 
-                  : p
-              )
-            );
-          } else {
-            console.error('Directions request failed:', status);
-            // Show error in POI info window
-            if (poi.marker) {
-              const infoWindow = new google.maps.InfoWindow({
-                content: `
-                  <div style="padding: 5px; max-width: 200px;">
-                    <h3 style="margin: 0; font-size: 14px; margin-bottom: 3px;">${poi.name}</h3>
-                    <p style="margin: 0; font-size: 12px; margin-bottom: 3px;">${poi.address || ''}</p>
-                    <p style="margin: 0; font-size: 12px; color: #c00;">Unable to calculate route</p>
-                  </div>
-                `
-              });
-              
-              // Close the existing info window for this POI
-              if (activeInfoWindow) {
-                activeInfoWindow.close();
-              }
-              
-              // Open the updated info window
-              infoWindow.open(googleMap, poi.marker);
-              setActiveInfoWindow(infoWindow);
-            }
-          }
-          
-          setCalculatingRoutes(false);
-        }
-      );
-    } catch (error) {
-      console.error('Error calculating route:', error);
-      setCalculatingRoutes(false);
-    }
-  };
+  // These route calculation functions were moved to the top of the component 
+  // to fix TypeScript errors with function hoisting
   
   // Function to toggle between map and static view
   const toggleMapView = () => {
