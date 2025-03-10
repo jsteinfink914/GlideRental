@@ -57,6 +57,8 @@ export function MapComparison({ properties }: MapComparisonProps) {
   const [googleMap, setGoogleMap] = useState<google.maps.Map | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
+  // Reference to keep track of all property markers - these should never be removed
+  const allPropertyMarkersRef = useRef<Map<number, google.maps.Marker>>(new Map());
   const [activeInfoWindow, setActiveInfoWindow] = useState<google.maps.InfoWindow | null>(null);
   const [mapApiKey, setMapApiKey] = useState<string | null>(null);
   const [mapView, setMapView] = useState<'map' | 'static'>('static');
@@ -432,6 +434,9 @@ export function MapComparison({ properties }: MapComparisonProps) {
             scale: 10
           }
         });
+        
+        // Store property marker in our permanent ref map so we can re-add it later
+        allPropertyMarkersRef.current.set(property.id, marker);
         
         // Create a custom info window with POI search
         const customInfoWindow = document.createElement('div');
@@ -1429,6 +1434,14 @@ export function MapComparison({ properties }: MapComparisonProps) {
       return prevPois.filter(poi => poi.type !== poiType);
     });
     
+    // Ensure all property markers are visible - these should never be removed
+    properties.forEach(property => {
+      const marker = allPropertyMarkersRef.current.get(property.id);
+      if (marker) {
+        marker.setMap(googleMap);
+      }
+    });
+    
     // Clear existing routes that go to POIs of this type
     setRoutes(prevRoutes => {
       // Find which POIs have this type
@@ -1750,6 +1763,14 @@ export function MapComparison({ properties }: MapComparisonProps) {
         return prevPois.filter(poi => poi.type !== poiType);
       });
       
+      // Ensure all property markers are visible
+      properties.forEach(prop => {
+        const marker = allPropertyMarkersRef.current.get(prop.id);
+        if (marker) {
+          marker.setMap(map);
+        }
+      });
+      
       // Clear existing routes to POIs of this type
       setRoutes(prevRoutes => {
         const existingRoutesToPOIsOfType = prevRoutes.filter(route => {
@@ -2053,6 +2074,14 @@ export function MapComparison({ properties }: MapComparisonProps) {
                 }
               });
               return [];
+            });
+            
+            // Make sure ALL property markers are visible
+            properties.forEach(prop => {
+              const marker = allPropertyMarkersRef.current.get(prop.id);
+              if (marker) {
+                marker.setMap(googleMap);
+              }
             });
             
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
