@@ -203,18 +203,18 @@ export default function ToolsPage() {
                         <CardHeader>
                           <CardTitle>Compare Routes & Distances</CardTitle>
                           <p className="text-muted-foreground">
-                            {propertiesForComparison.length >= 2 
+                            {propertiesForComparison.length >= 1 
                               ? "Find nearby places and analyze travel times for your saved properties" 
-                              : "Please select at least 2 properties to enable route comparison"}
+                              : "Please select at least one property to enable route comparison"}
                           </p>
                         </CardHeader>
                         <CardContent>
-                          {propertiesForComparison.length >= 2 ? (
+                          {propertiesForComparison.length > 0 ? (
                             <MapComparison properties={propertiesForComparison} />
                           ) : (
                             <div className="text-center py-6">
-                              <p className="mb-3">Please select at least 2 properties to compare routes and distances.</p>
-                              <p className="text-sm text-muted-foreground">The map comparison tool works best with multiple properties.</p>
+                              <p className="mb-3">Please select properties to compare routes and distances.</p>
+                              <p className="text-sm text-muted-foreground">Use the checkboxes above to select properties for comparison.</p>
                             </div>
                           )}
                         </CardContent>

@@ -797,8 +797,17 @@ export function MapComparison({ properties }: MapComparisonProps) {
                 bounds.extend(poi.location);
               });
               
-              // Fit map to new bounds
+              // Fit map to new bounds with some padding
               googleMap.fitBounds(bounds);
+              
+              // Add a small amount of padding
+              const listener = google.maps.event.addListenerOnce(googleMap, 'idle', () => {
+                // Slightly zoom out for better visibility
+                const currentZoom = googleMap.getZoom();
+                if (currentZoom !== undefined) {
+                  googleMap.setZoom(currentZoom - 1);
+                }
+              });
             }
             
             setSearchingPOIs(false);
