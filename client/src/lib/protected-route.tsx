@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 
 // Development mode toggle - set to true to bypass authentication checks
-const DEVELOPMENT_MODE = true;
+const DEVELOPMENT_MODE = false;
 
 export function ProtectedRoute({
   path,
