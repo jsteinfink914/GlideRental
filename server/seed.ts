@@ -16,8 +16,8 @@ async function seedDatabase() {
       landlordId = landlord.id;
       log(`Using existing landlord with ID ${landlordId}`, "seed");
     } else {
-      // Using camelCase column names as discovered in database inspection
-      log("Creating landlord user with camelCase column names", "seed");
+      // Using snake_case column names from db-init.ts
+      log("Creating landlord user with snake_case column names", "seed");
       try {
         const result = await db.execute(sql`
           INSERT INTO users (
@@ -62,7 +62,45 @@ async function seedDatabase() {
       return;
     }
     
-    // Step 3: Prepare property data
+    // Step 3: Create a sample building
+    let buildingId = null;
+    try {
+      const buildingResult = await db.execute(sql`
+        INSERT INTO buildings (
+          name,
+          landlord_id,
+          address,
+          neighborhood,
+          city,
+          state,
+          zip_code,
+          number_of_units,
+          amenities
+        ) 
+        VALUES (
+          'Riverfront Apartments',
+          ${landlordId},
+          '100 River Street',
+          'Downtown',
+          'New York',
+          'NY',
+          '10001',
+          24,
+          ARRAY['Gym', 'Pool', 'Doorman', 'Elevator']
+        )
+        RETURNING id;
+      `);
+      
+      if (buildingResult && buildingResult.rows && buildingResult.rows.length > 0) {
+        buildingId = buildingResult.rows[0].id;
+        log(`Created building with ID ${buildingId}`, "seed");
+      }
+    } catch (error) {
+      log(`Error creating building: ${error}`, "seed");
+      // Continue without building id
+    }
+    
+    // Step 4: Prepare property data
     const propertyTemplates = [
       {
         title: "Modern 2-Bedroom Apartment",
@@ -81,17 +119,16 @@ async function seedDatabase() {
         hasDishwasher: true,
         petFriendly: true,
         hasDoorman: true,
-        hasVirtualTour: true,
         isPublished: true,
-        noFee: false,
         availableDate: new Date().toISOString(),
         images: [
           "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
           "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
         ],
         amenities: ["Dishwasher", "In-Unit Laundry", "Doorman", "Central AC"],
-        latitude: 40.7431,
-        longitude: -73.9923
+        lat: 40.7431,
+        lon: -73.9923,
+        buildingId: buildingId // First property is in the building
       },
       {
         title: "Spacious 3-Bedroom Townhouse",
@@ -110,17 +147,16 @@ async function seedDatabase() {
         hasDishwasher: true,
         petFriendly: false,
         hasDoorman: false,
-        hasVirtualTour: false,
         isPublished: true,
-        noFee: true,
         availableDate: new Date().toISOString(),
         images: [
           "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80",
           "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
         ],
         amenities: ["In-Unit Laundry", "Dishwasher", "Backyard", "Central AC", "Parking"],
-        latitude: 40.7735,
-        longitude: -73.9565
+        lat: 40.7735,
+        lon: -73.9565,
+        buildingId: null // This is a standalone property
       },
       {
         title: "Luxury Studio Apartment",
@@ -139,33 +175,33 @@ async function seedDatabase() {
         hasDishwasher: true,
         petFriendly: true,
         hasDoorman: true,
-        hasVirtualTour: true,
         isPublished: true,
-        noFee: false,
         availableDate: new Date().toISOString(),
         images: [
           "https://images.unsplash.com/photo-1489171078254-c3365d6e359f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2031&q=80",
           "https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
         ],
         amenities: ["Doorman", "Dishwasher", "Roof Deck", "Gym", "Central AC"],
-        latitude: 40.7326,
-        longitude: -73.9935
+        lat: 40.7326,
+        lon: -73.9935,
+        buildingId: buildingId // Second property in the building
       }
     ];
     
-    // Step 4: Create properties with landlordId
-    const properties: InsertProperty[] = propertyTemplates.map(template => ({
+    // Step 5: Create properties with landlordId
+    const properties = propertyTemplates.map(template => ({
       ...template,
       landlordId
     }));
     
-    // Step 5: Insert properties using database-specific column names
+    // Step 6: Insert properties using database-specific column names
     let createdPropertyCount = 0;
     for (const propertyData of properties) {
       try {
         await db.execute(sql`
           INSERT INTO properties (
             landlord_id,
+            building_id,
             title,
             description,
             address,
@@ -180,19 +216,18 @@ async function seedDatabase() {
             property_type,
             available_date,
             is_published,
-            has_virtual_tour,
-            has_doorman,
             has_in_unit_laundry,
             has_dishwasher,
             pet_friendly,
-            no_fee,
-            latitude,
-            longitude,
-            images,
-            amenities
+            has_doorman,
+            lat,
+            lon,
+            amenities,
+            images
           ) 
           VALUES (
             ${landlordId}, 
+            ${propertyData.buildingId},
             ${propertyData.title},
             ${propertyData.description},
             ${propertyData.address},
@@ -207,16 +242,14 @@ async function seedDatabase() {
             ${propertyData.propertyType},
             ${propertyData.availableDate},
             ${propertyData.isPublished},
-            ${propertyData.hasVirtualTour},
-            ${propertyData.hasDoorman},
             ${propertyData.hasInUnitLaundry},
             ${propertyData.hasDishwasher},
             ${propertyData.petFriendly},
-            ${propertyData.noFee},
-            ${propertyData.latitude},
-            ${propertyData.longitude},
-            ${propertyData.images},
-            ${propertyData.amenities}
+            ${propertyData.hasDoorman},
+            ${propertyData.lat},
+            ${propertyData.lon},
+            ${sql.array(propertyData.amenities)},
+            ${sql.array(propertyData.images)}
           )
         `);
         createdPropertyCount++;
