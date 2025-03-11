@@ -1,5 +1,6 @@
-import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/pg-pool';
+import pkg from 'pg';
+const { Pool } = pkg;
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 
 // Check that we have all the required database environment variables
@@ -16,6 +17,9 @@ export const pool = new Pool({
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
+  ssl: {
+    rejectUnauthorized: false // needed for self-signed certs
+  }
 });
 
 // Initialize drizzle with the pool and schema

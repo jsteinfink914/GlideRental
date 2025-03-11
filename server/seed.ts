@@ -1,35 +1,42 @@
 import { storage } from "./storage";
 import { InsertProperty, InsertUser } from "@shared/schema";
+import { log } from "./vite";
 
 async function seedDatabase() {
-  console.log("Seeding database with sample data...");
+  log("Seeding database with sample data...", "seed");
   
-  // Create landlord user if not exists
-  let landlord = await storage.getUserByUsername("landlord");
-  
-  if (!landlord) {
-    const landlordData: InsertUser = {
-      username: "landlord",
-      password: "password123", // This will be hashed by auth.ts
-      email: "landlord@example.com",
-      firstName: "Property",
-      lastName: "Manager",
-      userType: "landlord",
-      onboardingCompleted: true,
-      phoneNumber: "555-123-4567"
-    };
-    landlord = await storage.createUser(landlordData);
-    console.log("Created landlord user");
-  }
+  try {
+    // Create landlord user if not exists
+    let landlord = await storage.getUserByUsername("landlord");
+    
+    if (!landlord) {
+      // Note: JavaScript properties are camelCase (firstName) 
+      // but the actual DB columns are snake_case (first_name)
+      // The ORM handles the mapping for us
+      const landlordData: InsertUser = {
+        username: "landlord",
+        password: "password123", // This will be hashed by auth.ts
+        email: "landlord@example.com",
+        firstName: "Property",
+        lastName: "Manager",
+        userType: "landlord",
+        onboardingCompleted: true,
+        phoneNumber: "555-123-4567"
+      };
+      
+      landlord = await storage.createUser(landlordData);
+      log("Created landlord user", "seed");
+    }
   
   // Check if properties already exist
   const existingProperties = await storage.getProperties();
   if (existingProperties.length > 0) {
-    console.log(`${existingProperties.length} properties already exist, skipping property creation`);
+    log(`${existingProperties.length} properties already exist, skipping property creation`, "seed");
     return;
   }
   
-  // Sample property data
+  // Sample property data - use JavaScript property names (camelCase like 'zipCode')
+  // Drizzle ORM will map these to the actual database column names (snake_case like 'zip_code')
   const properties: InsertProperty[] = [
     {
       title: "Modern 2-Bedroom Apartment",
@@ -59,7 +66,7 @@ async function seedDatabase() {
       ],
       amenities: ["Dishwasher", "In-Unit Laundry", "Doorman", "Central AC"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // These are additional fields not in the type but the database has columns for them
       latitude: 40.7431,
       longitude: -73.9923
     },
@@ -91,7 +98,7 @@ async function seedDatabase() {
       ],
       amenities: ["In-Unit Laundry", "Dishwasher", "Backyard", "Central AC", "Parking"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // Additional fields
       latitude: 40.7735,
       longitude: -73.9565
     },
@@ -123,7 +130,7 @@ async function seedDatabase() {
       ],
       amenities: ["Doorman", "Dishwasher", "Roof Deck", "Gym", "Central AC"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // Additional fields
       latitude: 40.7326,
       longitude: -73.9935
     },
@@ -155,7 +162,7 @@ async function seedDatabase() {
       ],
       amenities: ["Central AC", "Pre-War Details", "Exposed Brick"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // Additional fields
       latitude: 40.7273,
       longitude: -74.0031
     },
@@ -187,7 +194,7 @@ async function seedDatabase() {
       ],
       amenities: ["In-Unit Laundry", "Dishwasher", "Doorman", "Central AC", "Gym", "High Ceilings", "Parking"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // Additional fields
       latitude: 40.7197,
       longitude: -74.0080
     },
@@ -219,7 +226,7 @@ async function seedDatabase() {
       ],
       amenities: ["In-Unit Laundry", "Dishwasher", "Private Garden", "Central AC", "Renovated Kitchen", "Pet Friendly"],
       landlordId: landlord.id,
-      // @ts-ignore - We're adding these properties even though they're not in the schema
+      // Additional fields
       latitude: 40.7122,
       longitude: -73.9576
     }
@@ -230,7 +237,11 @@ async function seedDatabase() {
     await storage.createProperty(propertyData);
   }
   
-  console.log(`Created ${properties.length} sample properties`);
+  log(`Created ${properties.length} sample properties`, "seed");
+  } catch (error) {
+    log(`Error seeding database: ${error}`, "seed");
+    throw error;
+  }
 }
 
 export { seedDatabase };

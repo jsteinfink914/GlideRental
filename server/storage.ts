@@ -5,7 +5,7 @@ import createMemoryStore from "memorystore";
 import crypto from "crypto";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq, and, desc, sql, asc } from "drizzle-orm";
+import { eq, and, desc, sql, asc, or } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
 const PostgresSessionStore = connectPg(session);
@@ -780,4 +780,479 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+  
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(id: number, userUpdate: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userUpdate)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
+  }
+
+  async generateRoommateCode(userId: number): Promise<string> {
+    const code = crypto.randomBytes(6).toString('hex');
+    await this.updateUser(userId, { roommateCode: code });
+    return code;
+  }
+
+  async linkRoommate(userId: number, roommateCode: string): Promise<boolean> {
+    // Find user with matching roommate code
+    const [roommateUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.roommateCode, roommateCode));
+    
+    if (!roommateUser) return false;
+    
+    // Update both users to have the same roommateGroupId
+    const groupId = roommateUser.roommateGroupId || crypto.randomBytes(16).toString('hex');
+    
+    await Promise.all([
+      this.updateUser(userId, { roommateGroupId: groupId }),
+      this.updateUser(roommateUser.id, { roommateGroupId: groupId })
+    ]);
+    
+    return true;
+  }
+
+  async getRoommates(userId: number): Promise<User[]> {
+    const user = await this.getUser(userId);
+    if (!user?.roommateGroupId) return [];
+    
+    return db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.roommateGroupId, user.roommateGroupId),
+        sql`${users.id} != ${userId}`
+      ));
+  }
+
+  async getUserPreferences(userId: number): Promise<UserPreferences | undefined> {
+    const [preferences] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId));
+    return preferences || undefined;
+  }
+
+  async createUserPreferences(insertPreferences: InsertUserPreferences): Promise<UserPreferences> {
+    const [preferences] = await db
+      .insert(userPreferences)
+      .values(insertPreferences)
+      .returning();
+    return preferences;
+  }
+
+  async updateUserPreferences(userId: number, preferencesUpdate: Partial<UserPreferences>): Promise<UserPreferences | undefined> {
+    const [updatedPreferences] = await db
+      .update(userPreferences)
+      .set(preferencesUpdate)
+      .where(eq(userPreferences.userId, userId))
+      .returning();
+    return updatedPreferences || undefined;
+  }
+
+  async getProperty(id: number): Promise<Property | undefined> {
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, id));
+    return property || undefined;
+  }
+
+  async getProperties(filters?: Partial<Property>): Promise<Property[]> {
+    let query = db.select().from(properties);
+    
+    if (filters) {
+      const conditions = [];
+      
+      if (filters.landlordId !== undefined) {
+        conditions.push(eq(properties.landlordId, filters.landlordId));
+      }
+      
+      if (filters.isPublished !== undefined) {
+        conditions.push(eq(properties.isPublished, filters.isPublished));
+      }
+      
+      if (filters.buildingId !== undefined) {
+        conditions.push(eq(properties.buildingId, filters.buildingId));
+      }
+      
+      // Add more filters as needed
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+    }
+    
+    return query;
+  }
+
+  async getLandlordProperties(landlordId: number): Promise<Property[]> {
+    return this.getProperties({ landlordId });
+  }
+
+  async createProperty(insertProperty: InsertProperty): Promise<Property> {
+    const [property] = await db
+      .insert(properties)
+      .values(insertProperty)
+      .returning();
+    return property;
+  }
+
+  async updateProperty(id: number, propertyUpdate: Partial<Property>): Promise<Property | undefined> {
+    const [updatedProperty] = await db
+      .update(properties)
+      .set(propertyUpdate)
+      .where(eq(properties.id, id))
+      .returning();
+    return updatedProperty || undefined;
+  }
+
+  async deleteProperty(id: number): Promise<boolean> {
+    await db
+      .delete(properties)
+      .where(eq(properties.id, id));
+    return true;
+  }
+
+  async getBuilding(id: number): Promise<Building | undefined> {
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, id));
+    return building || undefined;
+  }
+
+  async getLandlordBuildings(landlordId: number): Promise<Building[]> {
+    return db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.landlordId, landlordId));
+  }
+
+  async createBuilding(insertBuilding: InsertBuilding): Promise<Building> {
+    const [building] = await db
+      .insert(buildings)
+      .values(insertBuilding)
+      .returning();
+    return building;
+  }
+
+  async updateBuilding(id: number, buildingUpdate: Partial<Building>): Promise<Building | undefined> {
+    const [updatedBuilding] = await db
+      .update(buildings)
+      .set(buildingUpdate)
+      .where(eq(buildings.id, id))
+      .returning();
+    return updatedBuilding || undefined;
+  }
+
+  async getLandlordCriteria(propertyId: number): Promise<LandlordCriteria | undefined> {
+    const [criteria] = await db
+      .select()
+      .from(landlordCriteria)
+      .where(eq(landlordCriteria.propertyId, propertyId));
+    return criteria || undefined;
+  }
+
+  async createLandlordCriteria(insertCriteria: InsertLandlordCriteria): Promise<LandlordCriteria> {
+    const [criteria] = await db
+      .insert(landlordCriteria)
+      .values(insertCriteria)
+      .returning();
+    return criteria;
+  }
+
+  async updateLandlordCriteria(propertyId: number, criteriaUpdate: Partial<LandlordCriteria>): Promise<LandlordCriteria | undefined> {
+    const [updatedCriteria] = await db
+      .update(landlordCriteria)
+      .set(criteriaUpdate)
+      .where(eq(landlordCriteria.propertyId, propertyId))
+      .returning();
+    return updatedCriteria || undefined;
+  }
+
+  async checkRenterQualification(userId: number, propertyId: number): Promise<{qualified: boolean, reasons?: string[]}> {
+    // This would involve complex business logic comparing user data against landlord criteria
+    // Implement based on your specific qualification rules
+    return { qualified: true };
+  }
+
+  async getMessage(id: number): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, id));
+    return message || undefined;
+  }
+
+  async getUserMessages(userId: number): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          eq(messages.senderId, userId),
+          eq(messages.recipientId, userId)
+        )
+      )
+      .orderBy(desc(messages.sentAt));
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async markMessageAsRead(id: number): Promise<Message | undefined> {
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return updatedMessage || undefined;
+  }
+
+  async getSavedProperty(id: number): Promise<SavedProperty | undefined> {
+    const [savedProperty] = await db
+      .select()
+      .from(savedProperties)
+      .where(eq(savedProperties.id, id));
+    return savedProperty || undefined;
+  }
+
+  async getUserSavedProperties(userId: number): Promise<SavedProperty[]> {
+    return db
+      .select()
+      .from(savedProperties)
+      .where(eq(savedProperties.userId, userId));
+  }
+
+  async createSavedProperty(insertSavedProperty: InsertSavedProperty): Promise<SavedProperty> {
+    const [savedProperty] = await db
+      .insert(savedProperties)
+      .values(insertSavedProperty)
+      .returning();
+    return savedProperty;
+  }
+
+  async deleteSavedProperty(id: number): Promise<boolean> {
+    await db
+      .delete(savedProperties)
+      .where(eq(savedProperties.id, id));
+    return true;
+  }
+
+  async getMaintenanceRequest(id: number): Promise<MaintenanceRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(maintenanceRequests)
+      .where(eq(maintenanceRequests.id, id));
+    return request || undefined;
+  }
+
+  async getUserMaintenanceRequests(userId: number): Promise<MaintenanceRequest[]> {
+    return db
+      .select()
+      .from(maintenanceRequests)
+      .where(eq(maintenanceRequests.userId, userId))
+      .orderBy(desc(maintenanceRequests.createdAt));
+  }
+
+  async getPropertyMaintenanceRequests(propertyId: number): Promise<MaintenanceRequest[]> {
+    return db
+      .select()
+      .from(maintenanceRequests)
+      .where(eq(maintenanceRequests.propertyId, propertyId))
+      .orderBy(desc(maintenanceRequests.createdAt));
+  }
+
+  async createMaintenanceRequest(insertRequest: InsertMaintenanceRequest): Promise<MaintenanceRequest> {
+    const [request] = await db
+      .insert(maintenanceRequests)
+      .values(insertRequest)
+      .returning();
+    return request;
+  }
+
+  async updateMaintenanceRequest(id: number, requestUpdate: Partial<MaintenanceRequest>): Promise<MaintenanceRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(maintenanceRequests)
+      .set(requestUpdate)
+      .where(eq(maintenanceRequests.id, id))
+      .returning();
+    return updatedRequest || undefined;
+  }
+
+  async getPayment(id: number): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.id, id));
+    return payment || undefined;
+  }
+
+  async getUserPayments(userId: number): Promise<Payment[]> {
+    return db
+      .select()
+      .from(payments)
+      .where(eq(payments.userId, userId))
+      .orderBy(desc(payments.dueDate));
+  }
+
+  async getPropertyPayments(propertyId: number): Promise<Payment[]> {
+    return db
+      .select()
+      .from(payments)
+      .where(eq(payments.propertyId, propertyId))
+      .orderBy(desc(payments.dueDate));
+  }
+
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const [payment] = await db
+      .insert(payments)
+      .values(insertPayment)
+      .returning();
+    return payment;
+  }
+
+  async updatePayment(id: number, paymentUpdate: Partial<Payment>): Promise<Payment | undefined> {
+    const [updatedPayment] = await db
+      .update(payments)
+      .set(paymentUpdate)
+      .where(eq(payments.id, id))
+      .returning();
+    return updatedPayment || undefined;
+  }
+
+  async uploadUserDocument(userId: number, documentType: string, documentPath: string): Promise<Partial<User>> {
+    // This updates a specific document field on the user
+    const documentFields: { [key: string]: string } = {};
+    documentFields[`document${documentType.charAt(0).toUpperCase() + documentType.slice(1)}`] = documentPath;
+    
+    return this.updateUser(userId, documentFields) as Promise<Partial<User>>;
+  }
+
+  async getUserDocuments(userId: number): Promise<Partial<User>> {
+    const user = await this.getUser(userId);
+    if (!user) return {};
+    
+    // Return only document-related fields
+    const documentFields = ['documentId', 'documentIncome', 'documentCredit'];
+    return Object.fromEntries(
+      Object.entries(user).filter(([key]) => documentFields.some(field => key.startsWith(field)))
+    );
+  }
+
+  async verifyUserDocument(userId: number, documentType: string): Promise<boolean> {
+    const verificationFields: { [key: string]: boolean } = {};
+    verificationFields[`documentVerified${documentType.charAt(0).toUpperCase() + documentType.slice(1)}`] = true;
+    
+    const result = await this.updateUser(userId, verificationFields);
+    return !!result;
+  }
+
+  async getRentalApplication(id: number): Promise<RentalApplication | undefined> {
+    const [application] = await db
+      .select()
+      .from(rentalApplications)
+      .where(eq(rentalApplications.id, id));
+    return application || undefined;
+  }
+
+  async getUserRentalApplications(userId: number): Promise<RentalApplication[]> {
+    return db
+      .select()
+      .from(rentalApplications)
+      .where(eq(rentalApplications.userId, userId))
+      .orderBy(desc(rentalApplications.createdAt));
+  }
+
+  async getLandlordRentalApplications(landlordId: number): Promise<RentalApplication[]> {
+    return db
+      .select({
+        application: rentalApplications,
+        property: properties,
+      })
+      .from(rentalApplications)
+      .innerJoin(properties, eq(rentalApplications.propertyId, properties.id))
+      .where(eq(properties.landlordId, landlordId))
+      .orderBy(desc(rentalApplications.createdAt))
+      .then(results => results.map(r => r.application));
+  }
+
+  async getPropertyRentalApplications(propertyId: number): Promise<RentalApplication[]> {
+    return db
+      .select()
+      .from(rentalApplications)
+      .where(eq(rentalApplications.propertyId, propertyId))
+      .orderBy(desc(rentalApplications.createdAt));
+  }
+
+  async createRentalApplication(insertApplication: InsertRentalApplication): Promise<RentalApplication> {
+    const [application] = await db
+      .insert(rentalApplications)
+      .values(insertApplication)
+      .returning();
+    return application;
+  }
+
+  async updateRentalApplication(id: number, applicationUpdate: Partial<RentalApplication>): Promise<RentalApplication | undefined> {
+    const [updatedApplication] = await db
+      .update(rentalApplications)
+      .set(applicationUpdate)
+      .where(eq(rentalApplications.id, id))
+      .returning();
+    return updatedApplication || undefined;
+  }
+
+  async quickApply(userId: number, propertyId: number, message?: string): Promise<RentalApplication | undefined> {
+    const application: InsertRentalApplication = {
+      userId,
+      propertyId,
+      status: 'pending',
+      message: message || '',
+      createdAt: new Date(),
+    };
+    
+    return this.createRentalApplication(application);
+  }
+}
+
+// Use the database storage implementation instead of memory storage
+export const storage = new DatabaseStorage();
