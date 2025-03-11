@@ -58,16 +58,7 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
   const [tempFilters, setTempFilters] = useState<FilterValues>(filters);
   const [tempMinRent, setTempMinRent] = useState<string>(filters.minRent?.toString() || "");
   const [tempMaxRent, setTempMaxRent] = useState<string>(filters.maxRent?.toString() || "");
-  
-  // Update tempFilters when input values change, but don't update immediately to allow multi-digit typing
-  useEffect(() => {
-    // Update the tempFilters with the current string values converted to numbers
-    setTempFilters(prev => ({
-      ...prev,
-      minRent: tempMinRent ? parseInt(tempMinRent) : undefined,
-      maxRent: tempMaxRent ? parseInt(tempMaxRent) : undefined
-    }));
-  }, [tempMinRent, tempMaxRent]);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
 
   
@@ -112,7 +103,13 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
   };
   
   const applyFilters = () => {
-    onFilterChange(tempFilters);
+    // Only convert string to number when applying filters
+    const filtersToApply = {
+      ...tempFilters,
+      minRent: tempMinRent ? parseInt(tempMinRent) : undefined,
+      maxRent: tempMaxRent ? parseInt(tempMaxRent) : undefined
+    };
+    onFilterChange(filtersToApply);
   };
   
   const clearFilters = () => {
@@ -388,7 +385,18 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
                   Filters
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-4" align="start">
+              <PopoverContent 
+                className="w-80 p-4" 
+                align="start"
+                onClick={(e) => e.stopPropagation()} // Prevent event from bubbling up
+                onPointerDownOutside={(e) => {
+                  // Only close when clicking outside the popover, not inside
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('.w-80')) {
+                    e.preventDefault();
+                  }
+                }}
+              >
                 <FilterUI />
                 <div className="flex justify-between mt-4 pt-4 border-t">
                   <Button variant="outline" size="sm" onClick={clearFilters}>
