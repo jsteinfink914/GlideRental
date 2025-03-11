@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,20 +56,6 @@ interface PropertyFiltersProps {
 export default function PropertyFilters({ filters, onFilterChange, onAIAssistantOpen }: PropertyFiltersProps) {
   const isMobile = useIsMobile();
   const [tempFilters, setTempFilters] = useState<FilterValues>(filters);
-  const [tempMinRent, setTempMinRent] = useState<string>(filters.minRent?.toString() || "");
-  const [tempMaxRent, setTempMaxRent] = useState<string>(filters.maxRent?.toString() || "");
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setTempFilters((prev) => ({
-        ...prev,
-        minRent: tempMinRent ? parseInt(tempMinRent) : undefined,
-        maxRent: tempMaxRent ? parseInt(tempMaxRent) : undefined,
-      }));
-    }, 500); // Adjust the delay as needed (500ms is common)
-  
-    return () => clearTimeout(timer); // Clear timeout if user types again
-  }, [tempMinRent, tempMaxRent]);
   
 
   
@@ -160,26 +146,34 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
             <div className="w-[48%]">
               <Label htmlFor="min-price">Min Price</Label>
               <Input
-                    id="min-price"
-                    value={tempMinRent}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === "" || /^\d+$/.test(value)) {
-                        setTempMinRent(value); // Update local state first
-                      }
-                    }}
-                    placeholder="$0"
-                />
+                id="min-price"
+                value={tempFilters.minRent ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or valid number input
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setTempFilters({
+                      ...tempFilters,
+                      minRent: value === '' ? undefined : parseInt(value)
+                    });
+                  }
+                }}
+                placeholder="$0"
+              />
             </div>
             <div className="w-[48%]">
               <Label htmlFor="max-price">Max Price</Label>
               <Input
                 id="max-price"
-                value={tempMaxRent}
+                value={tempFilters.maxRent ?? ""}
                 onChange={(e) => {
                   const value = e.target.value;
-                  if (value === "" || /^\d+$/.test(value)) {
-                    setTempMaxRent(value); // Update local state first
+                  // Allow empty string or valid number input
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setTempFilters({
+                      ...tempFilters,
+                      maxRent: value === '' ? undefined : parseInt(value)
+                    });
                   }
                 }}
                 placeholder="No max"
