@@ -129,6 +129,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to fetch multiple properties for comparison
+  app.get("/api/properties/compare", async (req, res) => {
+    try {
+      const ids = req.query.ids ? String(req.query.ids).split(',').map(id => parseInt(id.trim(), 10)) : [];
+      
+      if (ids.length === 0) {
+        return res.status(400).json({ message: "No property IDs provided" });
+      }
+      
+      const properties = await Promise.all(
+        ids.map(async (id) => {
+          const property = await storage.getProperty(id);
+          return property;
+        })
+      );
+      
+      // Filter out any null values (properties that weren't found)
+      const validProperties = properties.filter(property => property !== undefined);
+      
+      if (validProperties.length === 0) {
+        return res.status(404).json({ message: "No properties found with the provided IDs" });
+      }
+      
+      res.json(validProperties);
+    } catch (error) {
+      console.error("Error fetching properties for comparison:", error);
+      res.status(500).json({ message: "Error fetching properties for comparison" });
+    }
+  });
+  
+  // Get individual property by ID
   app.get("/api/properties/:id", async (req, res) => {
     try {
       const property = await storage.getProperty(parseInt(req.params.id));

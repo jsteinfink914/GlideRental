@@ -23,6 +23,7 @@ import BuildingOverviewPage from "@/pages/landlord/building-overview";
 import HomePage from "@/pages/home-page";
 import ForYouPage from "@/pages/for-you-page";
 import DocumentsPage from "@/pages/documents-page";
+import ComparePage from "@/pages/compare-page";
 
 // Redirect component for wouter
 function RedirectTo({ to }: { to: string }) {
@@ -61,6 +62,7 @@ function Router() {
       <ProtectedRoute path="/for-you" component={ForYouPage} />
       <ProtectedRoute path="/tools" component={ToolsPage} />
       <ProtectedRoute path="/saved" component={SavedPage} />
+      <Route path="/compare" component={ComparePage} />
       <Route path="/feed">
         <RedirectTo to="/portal" />
       </Route>
