@@ -3,8 +3,12 @@ import type { User, InsertUser, Property, InsertProperty, Building, InsertBuildi
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import crypto from "crypto";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, desc, sql, asc } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 // Storage interface
 export interface IStorage {
