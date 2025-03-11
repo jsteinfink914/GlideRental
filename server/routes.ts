@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 
 // Development mode toggle - set to true to bypass authentication for API endpoints
-const DEVELOPMENT_MODE = true;
+const DEVELOPMENT_MODE = false;
 
 interface PropertyQuery {
   description: string;
