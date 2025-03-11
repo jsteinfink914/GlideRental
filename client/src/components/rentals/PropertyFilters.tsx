@@ -56,6 +56,18 @@ interface PropertyFiltersProps {
 export default function PropertyFilters({ filters, onFilterChange, onAIAssistantOpen }: PropertyFiltersProps) {
   const isMobile = useIsMobile();
   const [tempFilters, setTempFilters] = useState<FilterValues>(filters);
+  const [tempMinRent, setTempMinRent] = useState<string>(filters.minRent?.toString() || "");
+  const [tempMaxRent, setTempMaxRent] = useState<string>(filters.maxRent?.toString() || "");
+  
+  // Update tempFilters when input values change, but don't update immediately to allow multi-digit typing
+  useEffect(() => {
+    // Update the tempFilters with the current string values converted to numbers
+    setTempFilters(prev => ({
+      ...prev,
+      minRent: tempMinRent ? parseInt(tempMinRent) : undefined,
+      maxRent: tempMaxRent ? parseInt(tempMaxRent) : undefined
+    }));
+  }, [tempMinRent, tempMaxRent]);
   
 
   
@@ -68,11 +80,9 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
   };
   
   const handlePriceRangeChange = (values: number[]) => {
-    setTempFilters({ 
-      ...tempFilters, 
-      minRent: values[0], 
-      maxRent: values[1] 
-    });
+    // Update the string values that users can edit
+    setTempMinRent(values[0].toString());
+    setTempMaxRent(values[1].toString());
   };
   
   const handleBedroomsChange = (value: string) => {
@@ -111,6 +121,8 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
       sortBy: filters.sortBy
     };
     setTempFilters(clearedFilters);
+    setTempMinRent("");
+    setTempMaxRent("");
     onFilterChange(clearedFilters);
   };
   
@@ -136,7 +148,10 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
         <h3 className="font-medium mb-3">Price Range</h3>
         <div className="space-y-4">
           <Slider
-            value={[tempFilters.minRent || 0, tempFilters.maxRent || 10000]}
+            value={[
+              tempMinRent ? parseInt(tempMinRent) : 0, 
+              tempMaxRent ? parseInt(tempMaxRent) : 10000
+            ]}
             min={0}
             max={10000}
             step={100}
@@ -147,15 +162,12 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
               <Label htmlFor="min-price">Min Price</Label>
               <Input
                 id="min-price"
-                value={tempFilters.minRent ?? ""}
+                value={tempMinRent}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Allow empty string or valid number input
                   if (value === '' || /^\d+$/.test(value)) {
-                    setTempFilters({
-                      ...tempFilters,
-                      minRent: value === '' ? undefined : parseInt(value)
-                    });
+                    setTempMinRent(value);
                   }
                 }}
                 placeholder="$0"
@@ -165,15 +177,12 @@ export default function PropertyFilters({ filters, onFilterChange, onAIAssistant
               <Label htmlFor="max-price">Max Price</Label>
               <Input
                 id="max-price"
-                value={tempFilters.maxRent ?? ""}
+                value={tempMaxRent}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Allow empty string or valid number input
                   if (value === '' || /^\d+$/.test(value)) {
-                    setTempFilters({
-                      ...tempFilters,
-                      maxRent: value === '' ? undefined : parseInt(value)
-                    });
+                    setTempMaxRent(value);
                   }
                 }}
                 placeholder="No max"
