@@ -248,8 +248,8 @@ async function seedDatabase() {
             ${propertyData.hasDoorman},
             ${propertyData.lat},
             ${propertyData.lon},
-            ${sql.array(propertyData.amenities)},
-            ${sql.array(propertyData.images)}
+            ARRAY[${propertyData.amenities.map(a => `'${a}'`).join(', ')}]::TEXT[],
+            ARRAY[${propertyData.images.map(img => `'${img}'`).join(', ')}]::TEXT[]
           )
         `);
         createdPropertyCount++;
