@@ -1,243 +1,231 @@
 import { storage } from "./storage";
-import { InsertProperty, InsertUser } from "@shared/schema";
+import { InsertProperty } from "@shared/schema";
 import { log } from "./vite";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 async function seedDatabase() {
   log("Seeding database with sample data...", "seed");
   
   try {
-    // Create landlord user if not exists
+    // Step 1: Get or create landlord user
     let landlord = await storage.getUserByUsername("landlord");
+    let landlordId = 1; // Default value
     
-    if (!landlord) {
-      // Note: JavaScript properties are camelCase (firstName) 
-      // but the actual DB columns are snake_case (first_name)
-      // The ORM handles the mapping for us
-      const landlordData: InsertUser = {
-        username: "landlord",
-        password: "password123", // This will be hashed by auth.ts
-        email: "landlord@example.com",
-        firstName: "Property",
-        lastName: "Manager",
-        userType: "landlord",
-        onboardingCompleted: true,
-        phoneNumber: "555-123-4567"
-      };
-      
-      landlord = await storage.createUser(landlordData);
-      log("Created landlord user", "seed");
+    if (landlord) {
+      landlordId = landlord.id;
+      log(`Using existing landlord with ID ${landlordId}`, "seed");
+    } else {
+      // Using camelCase column names as discovered in database inspection
+      log("Creating landlord user with camelCase column names", "seed");
+      try {
+        const result = await db.execute(sql`
+          INSERT INTO users (
+            username, 
+            password, 
+            email, 
+            first_name, 
+            last_name, 
+            user_type, 
+            onboarding_completed, 
+            phone_number
+          ) 
+          VALUES (
+            'landlord', 
+            'password123', 
+            'landlord@example.com', 
+            'Property', 
+            'Manager', 
+            'landlord', 
+            true, 
+            '555-123-4567'
+          )
+          RETURNING *;
+        `);
+        
+        if (result && result.rows && result.rows.length > 0) {
+          const newLandlord = result.rows[0] as any;
+          landlordId = newLandlord.id;
+          log(`Created landlord user with ID ${landlordId}`, "seed");
+        } else {
+          log("Failed to create landlord user, using default ID 1", "seed");
+        }
+      } catch (error) {
+        log(`Error creating landlord: ${error}, using default ID 1`, "seed");
+      }
     }
   
-  // Check if properties already exist
-  const existingProperties = await storage.getProperties();
-  if (existingProperties.length > 0) {
-    log(`${existingProperties.length} properties already exist, skipping property creation`, "seed");
-    return;
-  }
-  
-  // Sample property data - use JavaScript property names (camelCase like 'zipCode')
-  // Drizzle ORM will map these to the actual database column names (snake_case like 'zip_code')
-  const properties: InsertProperty[] = [
-    {
-      title: "Modern 2-Bedroom Apartment",
-      description: "Bright and spacious 2-bedroom apartment with hardwood floors, stainless steel appliances, and in-unit laundry.",
-      rent: 2800,
-      address: "123 Main St",
-      city: "New York",
-      state: "NY",
-      zipCode: "10001",
-      neighborhood: "Chelsea",
-      propertyType: "Apartment",
-      bedrooms: 2,
-      bathrooms: 1,
-      squareFeet: 950,
-      hasInUnitLaundry: true,
-      hasDishwasher: true,
-      petFriendly: true,
-      hasDoorman: true,
-      hasVirtualTour: true,
-      isPublished: true,
-      noFee: false,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-      ],
-      amenities: ["Dishwasher", "In-Unit Laundry", "Doorman", "Central AC"],
-      landlordId: landlord.id,
-      // These are additional fields not in the type but the database has columns for them
-      latitude: 40.7431,
-      longitude: -73.9923
-    },
-    {
-      title: "Spacious 3-Bedroom Townhouse",
-      description: "Beautiful townhouse with 3 bedrooms, 2.5 bathrooms, a private backyard, and modern finishes throughout.",
-      rent: 3500,
-      address: "456 Park Ave",
-      city: "New York",
-      state: "NY",
-      zipCode: "10022",
-      neighborhood: "Upper East Side",
-      propertyType: "Townhouse",
-      bedrooms: 3,
-      bathrooms: 2.5,
-      squareFeet: 1800,
-      hasInUnitLaundry: true,
-      hasDishwasher: true,
-      petFriendly: false,
-      hasDoorman: false,
-      hasVirtualTour: false,
-      isPublished: true,
-      noFee: true,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80",
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2187&q=80"
-      ],
-      amenities: ["In-Unit Laundry", "Dishwasher", "Backyard", "Central AC", "Parking"],
-      landlordId: landlord.id,
-      // Additional fields
-      latitude: 40.7735,
-      longitude: -73.9565
-    },
-    {
-      title: "Luxury Studio Apartment",
-      description: "High-end studio apartment with floor-to-ceiling windows, premium finishes, and building amenities including gym and roof deck.",
-      rent: 2200,
-      address: "789 Broadway",
-      city: "New York",
-      state: "NY",
-      zipCode: "10003",
-      neighborhood: "Greenwich Village",
-      propertyType: "Studio",
-      bedrooms: 0,
-      bathrooms: 1,
-      squareFeet: 550,
-      hasInUnitLaundry: false,
-      hasDishwasher: true,
-      petFriendly: true,
-      hasDoorman: true,
-      hasVirtualTour: true,
-      isPublished: true,
-      noFee: false,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1489171078254-c3365d6e359f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2031&q=80",
-        "https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-      ],
-      amenities: ["Doorman", "Dishwasher", "Roof Deck", "Gym", "Central AC"],
-      landlordId: landlord.id,
-      // Additional fields
-      latitude: 40.7326,
-      longitude: -73.9935
-    },
-    {
-      title: "Cozy 1-Bedroom Apartment",
-      description: "Charming 1-bedroom apartment with classic NYC details including brick walls and large windows. Great downtown location.",
-      rent: 2400,
-      address: "321 Thompson St",
-      city: "New York",
-      state: "NY",
-      zipCode: "10012",
-      neighborhood: "SoHo",
-      propertyType: "Apartment",
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 650,
-      hasInUnitLaundry: false,
-      hasDishwasher: false,
-      petFriendly: false,
-      hasDoorman: false,
-      hasVirtualTour: false,
-      isPublished: true,
-      noFee: true,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1499916078039-922301b0eb9b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80",
-        "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2187&q=80",
-        "https://images.unsplash.com/photo-1574643156929-51fa098b0394?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80"
-      ],
-      amenities: ["Central AC", "Pre-War Details", "Exposed Brick"],
-      landlordId: landlord.id,
-      // Additional fields
-      latitude: 40.7273,
-      longitude: -74.0031
-    },
-    {
-      title: "Luxury 2-Bedroom Loft",
-      description: "Stunning converted loft with high ceilings, exposed brick, and chef's kitchen. Building offers 24/7 doorman and fitness center.",
-      rent: 4200,
-      address: "55 Hudson St",
-      city: "New York",
-      state: "NY",
-      zipCode: "10013",
-      neighborhood: "Tribeca",
-      propertyType: "Loft",
-      bedrooms: 2,
-      bathrooms: 2,
-      squareFeet: 1400,
-      hasInUnitLaundry: true,
-      hasDishwasher: true,
-      petFriendly: true,
-      hasDoorman: true,
-      hasVirtualTour: true,
-      isPublished: true,
-      noFee: false,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1484101403633-562f891dc89a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80",
-        "https://images.unsplash.com/photo-1524758631624-e2822e304c36?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-      ],
-      amenities: ["In-Unit Laundry", "Dishwasher", "Doorman", "Central AC", "Gym", "High Ceilings", "Parking"],
-      landlordId: landlord.id,
-      // Additional fields
-      latitude: 40.7197,
-      longitude: -74.0080
-    },
-    {
-      title: "Modern 3-Bedroom Brooklyn Brownstone",
-      description: "Beautifully renovated brownstone unit with 3 bedrooms, 2 bathrooms, private garden, and premium finishes throughout.",
-      rent: 3900,
-      address: "123 Bedford Ave",
-      city: "Brooklyn",
-      state: "NY",
-      zipCode: "11211",
-      neighborhood: "Williamsburg",
-      propertyType: "Brownstone",
-      bedrooms: 3,
-      bathrooms: 2,
-      squareFeet: 1600,
-      hasInUnitLaundry: true,
-      hasDishwasher: true,
-      petFriendly: true,
-      hasDoorman: false,
-      hasVirtualTour: true,
-      isPublished: true,
-      noFee: true,
-      availableDate: new Date().toISOString(),
-      images: [
-        "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2158&q=80",
-        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80",
-        "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80"
-      ],
-      amenities: ["In-Unit Laundry", "Dishwasher", "Private Garden", "Central AC", "Renovated Kitchen", "Pet Friendly"],
-      landlordId: landlord.id,
-      // Additional fields
-      latitude: 40.7122,
-      longitude: -73.9576
+    // Step 2: Check if properties already exist
+    const existingProperties = await storage.getProperties();
+    if (existingProperties.length > 0) {
+      log(`${existingProperties.length} properties already exist, skipping property creation`, "seed");
+      return;
     }
-  ];
-  
-  // Create properties
-  for (const propertyData of properties) {
-    await storage.createProperty(propertyData);
-  }
-  
-  log(`Created ${properties.length} sample properties`, "seed");
+    
+    // Step 3: Prepare property data
+    const propertyTemplates = [
+      {
+        title: "Modern 2-Bedroom Apartment",
+        description: "Bright and spacious 2-bedroom apartment with hardwood floors, stainless steel appliances, and in-unit laundry.",
+        rent: 2800,
+        address: "123 Main St",
+        city: "New York",
+        state: "NY",
+        zipCode: "10001",
+        neighborhood: "Chelsea",
+        propertyType: "Apartment",
+        bedrooms: 2,
+        bathrooms: 1,
+        squareFeet: 950,
+        hasInUnitLaundry: true,
+        hasDishwasher: true,
+        petFriendly: true,
+        hasDoorman: true,
+        hasVirtualTour: true,
+        isPublished: true,
+        noFee: false,
+        availableDate: new Date().toISOString(),
+        images: [
+          "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+          "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+        ],
+        amenities: ["Dishwasher", "In-Unit Laundry", "Doorman", "Central AC"],
+        latitude: 40.7431,
+        longitude: -73.9923
+      },
+      {
+        title: "Spacious 3-Bedroom Townhouse",
+        description: "Beautiful townhouse with 3 bedrooms, 2.5 bathrooms, a private backyard, and modern finishes throughout.",
+        rent: 3500,
+        address: "456 Park Ave",
+        city: "New York",
+        state: "NY",
+        zipCode: "10022",
+        neighborhood: "Upper East Side",
+        propertyType: "Townhouse",
+        bedrooms: 3,
+        bathrooms: 2.5,
+        squareFeet: 1800,
+        hasInUnitLaundry: true,
+        hasDishwasher: true,
+        petFriendly: false,
+        hasDoorman: false,
+        hasVirtualTour: false,
+        isPublished: true,
+        noFee: true,
+        availableDate: new Date().toISOString(),
+        images: [
+          "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80",
+          "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+        ],
+        amenities: ["In-Unit Laundry", "Dishwasher", "Backyard", "Central AC", "Parking"],
+        latitude: 40.7735,
+        longitude: -73.9565
+      },
+      {
+        title: "Luxury Studio Apartment",
+        description: "High-end studio apartment with floor-to-ceiling windows, premium finishes, and building amenities including gym and roof deck.",
+        rent: 2200,
+        address: "789 Broadway",
+        city: "New York",
+        state: "NY",
+        zipCode: "10003",
+        neighborhood: "Greenwich Village",
+        propertyType: "Studio",
+        bedrooms: 0,
+        bathrooms: 1,
+        squareFeet: 550,
+        hasInUnitLaundry: false,
+        hasDishwasher: true,
+        petFriendly: true,
+        hasDoorman: true,
+        hasVirtualTour: true,
+        isPublished: true,
+        noFee: false,
+        availableDate: new Date().toISOString(),
+        images: [
+          "https://images.unsplash.com/photo-1489171078254-c3365d6e359f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2031&q=80",
+          "https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+        ],
+        amenities: ["Doorman", "Dishwasher", "Roof Deck", "Gym", "Central AC"],
+        latitude: 40.7326,
+        longitude: -73.9935
+      }
+    ];
+    
+    // Step 4: Create properties with landlordId
+    const properties: InsertProperty[] = propertyTemplates.map(template => ({
+      ...template,
+      landlordId
+    }));
+    
+    // Step 5: Insert properties using database-specific column names
+    let createdPropertyCount = 0;
+    for (const propertyData of properties) {
+      try {
+        await db.execute(sql`
+          INSERT INTO properties (
+            landlord_id,
+            title,
+            description,
+            address,
+            neighborhood,
+            city,
+            state,
+            zip_code,
+            rent,
+            bedrooms,
+            bathrooms,
+            square_feet,
+            property_type,
+            available_date,
+            is_published,
+            has_virtual_tour,
+            has_doorman,
+            has_in_unit_laundry,
+            has_dishwasher,
+            pet_friendly,
+            no_fee,
+            latitude,
+            longitude,
+            images,
+            amenities
+          ) 
+          VALUES (
+            ${landlordId}, 
+            ${propertyData.title},
+            ${propertyData.description},
+            ${propertyData.address},
+            ${propertyData.neighborhood},
+            ${propertyData.city},
+            ${propertyData.state},
+            ${propertyData.zipCode},
+            ${propertyData.rent},
+            ${propertyData.bedrooms},
+            ${propertyData.bathrooms},
+            ${propertyData.squareFeet},
+            ${propertyData.propertyType},
+            ${propertyData.availableDate},
+            ${propertyData.isPublished},
+            ${propertyData.hasVirtualTour},
+            ${propertyData.hasDoorman},
+            ${propertyData.hasInUnitLaundry},
+            ${propertyData.hasDishwasher},
+            ${propertyData.petFriendly},
+            ${propertyData.noFee},
+            ${propertyData.latitude},
+            ${propertyData.longitude},
+            ${propertyData.images},
+            ${propertyData.amenities}
+          )
+        `);
+        createdPropertyCount++;
+      } catch (error) {
+        log(`Error creating property: ${error}`, "seed");
+      }
+    }
+    
+    log(`Created ${createdPropertyCount} sample properties`, "seed");
   } catch (error) {
     log(`Error seeding database: ${error}`, "seed");
     throw error;

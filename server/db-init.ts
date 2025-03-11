@@ -22,34 +22,37 @@ export async function initializeDatabase() {
           "username" TEXT NOT NULL,
           "email" TEXT NOT NULL,
           "password" TEXT NOT NULL,
-          "firstName" TEXT NOT NULL,
-          "lastName" TEXT NOT NULL,
-          "userType" TEXT NOT NULL,
-          "phoneNumber" TEXT,
-          "profileImage" TEXT,
-          "onboardingCompleted" BOOLEAN,
-          "creditScore" INTEGER,
+          "first_name" TEXT NOT NULL,
+          "last_name" TEXT NOT NULL,
+          "user_type" TEXT NOT NULL,
+          "phone_number" TEXT,
+          "profile_image" TEXT,
+          "onboarding_completed" BOOLEAN,
+          "roommate_code" TEXT,
+          "roommate_group_id" TEXT,
+          "roommates" JSONB,
+          "credit_score" INTEGER,
           "income" INTEGER,
-          "documentsUploaded" JSONB,
-          "documentVerificationStatus" JSONB,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "documents_uploaded" JSONB,
+          "document_verification_status" JSONB,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "user_preferences" (
           "id" SERIAL PRIMARY KEY,
-          "userId" INTEGER NOT NULL,
+          "user_id" INTEGER NOT NULL,
           "budget" JSONB NOT NULL,
-          "moveInDate" TEXT NOT NULL,
-          "bedroomsMin" INTEGER NOT NULL,
-          "bedroomsMax" INTEGER NOT NULL,
-          "bathroomsMin" INTEGER NOT NULL,
-          "bathroomsMax" INTEGER NOT NULL,
-          "neighborhoodPreferences" TEXT[],
+          "move_in_date" TEXT NOT NULL,
+          "bedrooms_min" INTEGER NOT NULL,
+          "bedrooms_max" INTEGER NOT NULL,
+          "bathrooms_min" INTEGER NOT NULL,
+          "bathrooms_max" INTEGER NOT NULL,
+          "neighborhood_preferences" TEXT[],
           "amenities" TEXT[],
-          "propertyTypes" TEXT[],
-          "petFriendly" BOOLEAN,
+          "property_types" TEXT[],
+          "pet_friendly" BOOLEAN,
           "furnished" BOOLEAN,
-          "utilitiesIncluded" BOOLEAN,
+          "utilities_included" BOOLEAN,
           "accessibility" BOOLEAN,
           "gym" TEXT,
           "grocery" TEXT,
@@ -58,135 +61,135 @@ export async function initializeDatabase() {
           "safety" INTEGER,
           "schools" BOOLEAN,
           "parks" BOOLEAN,
-          "publicTransport" BOOLEAN,
-          "poiTypes" TEXT[],
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "public_transport" BOOLEAN,
+          "poi_types" TEXT[],
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "properties" (
           "id" SERIAL PRIMARY KEY,
-          "landlordId" INTEGER NOT NULL,
+          "landlord_id" INTEGER NOT NULL,
           "title" TEXT NOT NULL,
           "description" TEXT NOT NULL,
           "address" TEXT NOT NULL,
           "neighborhood" TEXT NOT NULL,
           "city" TEXT NOT NULL,
           "state" TEXT NOT NULL,
-          "zipCode" TEXT NOT NULL,
+          "zip_code" TEXT NOT NULL,
           "rent" INTEGER NOT NULL,
           "bedrooms" INTEGER NOT NULL,
           "bathrooms" INTEGER NOT NULL,
-          "squareFeet" INTEGER,
+          "square_feet" INTEGER,
           "lat" DOUBLE PRECISION,
           "lon" DOUBLE PRECISION,
-          "propertyType" TEXT NOT NULL,
-          "isPublished" BOOLEAN,
-          "availableDate" TEXT,
-          "leaseLength" INTEGER,
-          "hasInUnitLaundry" BOOLEAN,
-          "hasDishwasher" BOOLEAN,
-          "petFriendly" BOOLEAN,
-          "hasDoorman" BOOLEAN,
-          "hasElevator" BOOLEAN,
-          "hasGym" BOOLEAN,
-          "hasParking" BOOLEAN,
-          "utilitiesIncluded" BOOLEAN,
+          "property_type" TEXT NOT NULL,
+          "is_published" BOOLEAN,
+          "available_date" TEXT,
+          "lease_length" INTEGER,
+          "has_in_unit_laundry" BOOLEAN,
+          "has_dishwasher" BOOLEAN,
+          "pet_friendly" BOOLEAN,
+          "has_doorman" BOOLEAN,
+          "has_elevator" BOOLEAN,
+          "has_gym" BOOLEAN,
+          "has_parking" BOOLEAN,
+          "utilities_included" BOOLEAN,
           "furnished" BOOLEAN,
           "amenities" TEXT[],
           "embedding" DOUBLE PRECISION[],
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "buildings" (
           "id" SERIAL PRIMARY KEY,
           "name" TEXT NOT NULL,
-          "landlordId" INTEGER NOT NULL,
+          "landlord_id" INTEGER NOT NULL,
           "address" TEXT NOT NULL,
           "neighborhood" TEXT NOT NULL,
           "city" TEXT NOT NULL,
           "state" TEXT NOT NULL,
-          "zipCode" TEXT NOT NULL,
+          "zip_code" TEXT NOT NULL,
           "amenities" TEXT[],
           "embedding" DOUBLE PRECISION[],
-          "numberOfUnits" INTEGER NOT NULL,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "number_of_units" INTEGER NOT NULL,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "landlord_criteria" (
           "id" SERIAL PRIMARY KEY,
-          "propertyId" INTEGER NOT NULL,
-          "minIncome" INTEGER,
-          "minCreditScore" INTEGER,
-          "requiresEmploymentVerification" BOOLEAN,
-          "requiresRentalHistory" BOOLEAN,
-          "requiresBackgroundCheck" BOOLEAN,
-          "petsAllowed" BOOLEAN,
-          "smokingAllowed" BOOLEAN,
-          "maxOccupants" INTEGER,
-          "preferredMoveInDate" TEXT,
-          "leaseLength" INTEGER NOT NULL,
-          "additionalRequirements" TEXT,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "property_id" INTEGER NOT NULL,
+          "min_income" INTEGER,
+          "min_credit_score" INTEGER,
+          "requires_employment_verification" BOOLEAN,
+          "requires_rental_history" BOOLEAN,
+          "requires_background_check" BOOLEAN,
+          "pets_allowed" BOOLEAN,
+          "smoking_allowed" BOOLEAN,
+          "max_occupants" INTEGER,
+          "preferred_move_in_date" TEXT,
+          "lease_length" INTEGER NOT NULL,
+          "additional_requirements" TEXT,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "messages" (
           "id" SERIAL PRIMARY KEY,
-          "senderId" INTEGER NOT NULL,
-          "receiverId" INTEGER NOT NULL,
+          "sender_id" INTEGER NOT NULL,
+          "receiver_id" INTEGER NOT NULL,
           "content" TEXT NOT NULL,
-          "isRead" BOOLEAN NOT NULL,
-          "propertyId" INTEGER,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "is_read" BOOLEAN NOT NULL,
+          "property_id" INTEGER,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "saved_properties" (
           "id" SERIAL PRIMARY KEY,
-          "userId" INTEGER NOT NULL,
-          "propertyId" INTEGER NOT NULL,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "user_id" INTEGER NOT NULL,
+          "property_id" INTEGER NOT NULL,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "maintenance_requests" (
           "id" SERIAL PRIMARY KEY,
           "title" TEXT NOT NULL,
           "description" TEXT NOT NULL,
-          "propertyId" INTEGER NOT NULL,
-          "tenantId" INTEGER NOT NULL,
+          "property_id" INTEGER NOT NULL,
+          "tenant_id" INTEGER NOT NULL,
           "status" TEXT NOT NULL,
           "priority" TEXT NOT NULL,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "payments" (
           "id" SERIAL PRIMARY KEY,
           "type" TEXT NOT NULL,
-          "propertyId" INTEGER NOT NULL,
-          "tenantId" INTEGER NOT NULL,
+          "property_id" INTEGER NOT NULL,
+          "tenant_id" INTEGER NOT NULL,
           "amount" INTEGER NOT NULL,
           "status" TEXT NOT NULL,
-          "dueDate" TEXT,
-          "paidDate" TIMESTAMP,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "due_date" TEXT,
+          "paid_date" TIMESTAMP,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS "rental_applications" (
           "id" SERIAL PRIMARY KEY,
-          "landlordId" INTEGER NOT NULL,
-          "propertyId" INTEGER NOT NULL,
-          "userId" INTEGER NOT NULL,
+          "landlord_id" INTEGER NOT NULL,
+          "property_id" INTEGER NOT NULL,
+          "user_id" INTEGER NOT NULL,
           "message" TEXT,
           "status" TEXT NOT NULL,
-          "moveInDate" TEXT,
-          "submittedDocuments" JSONB,
-          "landlordNotes" TEXT,
-          "isQuickApplication" BOOLEAN,
-          "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "move_in_date" TEXT,
+          "submitted_documents" JSONB,
+          "landlord_notes" TEXT,
+          "is_quick_application" BOOLEAN,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       

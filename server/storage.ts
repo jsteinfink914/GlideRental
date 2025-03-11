@@ -788,6 +788,15 @@ export class DatabaseStorage implements IStorage {
       pool, 
       createTableIfMissing: true 
     });
+    
+    // Log diagnostic info during initialization
+    console.log('PostgreSQL connection info:', {
+      host: process.env.PGHOST,
+      port: process.env.PGPORT,
+      database: process.env.PGDATABASE,
+      user: process.env.PGUSER,
+      // Don't log password for security
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -806,8 +815,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    try {
+      // Log what we're trying to insert for debugging
+      console.log('Creating user with data:', JSON.stringify(insertUser, null, 2));
+      
+      // Make sure required fields have default values if not provided
+      const userData = {
+        ...insertUser,
+        userType: insertUser.userType || 'renter',
+        onboardingCompleted: insertUser.onboardingCompleted ?? false,
+      };
+      
+      const [user] = await db.insert(users).values(userData).returning();
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
 
   async updateUser(id: number, userUpdate: Partial<User>): Promise<User | undefined> {

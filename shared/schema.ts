@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   profileImage: text("profile_image"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
   roommateCode: text("roommate_code"),
+  roommateGroupId: text("roommate_group_id"),
   roommates: json("roommates").$type<number[]>(),
   documentsUploaded: json("documents_uploaded").$type<{
     w2?: string | null,
@@ -51,6 +52,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const properties = pgTable("properties", {
   id: serial("id").primaryKey(),
   landlordId: integer("landlord_id").notNull(),
+  buildingId: integer("building_id"),
   title: text("title").notNull(),
   description: text("description").notNull(),
   address: text("address").notNull(),
