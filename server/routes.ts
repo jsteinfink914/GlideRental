@@ -235,13 +235,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Map lat/lon to latitude/longitude for frontend components
       const propertyAny = property as any;
-      const propertyWithMappedCoordinates = {
+      
+      // Check if lat/lon values are present
+      if (propertyAny.lat !== undefined && propertyAny.lon !== undefined) {
+        const propertyWithMappedCoordinates = {
+          ...property,
+          latitude: propertyAny.lat,
+          longitude: propertyAny.lon
+        };
+        
+        console.log(`Property ${property.id} coordinates mapped:`, 
+          propertyWithMappedCoordinates.latitude, 
+          propertyWithMappedCoordinates.longitude
+        );
+        
+        res.json(propertyWithMappedCoordinates);
+        return;
+      }
+      
+      // If we already have latitude/longitude fields populated, use those
+      if (propertyAny.latitude !== undefined && propertyAny.longitude !== undefined) {
+        console.log(`Property ${property.id} already has coordinates:`, 
+          propertyAny.latitude, 
+          propertyAny.longitude
+        );
+        
+        res.json(property);
+        return;
+      }
+      
+      // Fallback to default coordinates (NYC) if no coordinates found
+      const propertyWithDefaultCoordinates = {
         ...property,
-        latitude: propertyAny.lat,
-        longitude: propertyAny.lon
+        latitude: 40.7128,
+        longitude: -74.0060
       };
       
-      res.json(propertyWithMappedCoordinates);
+      console.log(`Property ${property.id} using default coordinates`);
+      
+      res.json(propertyWithDefaultCoordinates);
     } catch (error) {
       res.status(500).json({ message: "Error fetching property" });
     }
@@ -264,7 +296,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await Promise.all(
         savedProperties.map(async (saved) => {
           const property = await storage.getProperty(saved.propertyId);
-          return { savedId: saved.id, property };
+          
+          if (!property) {
+            return { savedId: saved.id, property: null };
+          }
+          
+          // Map lat/lon to latitude/longitude for frontend components
+          const propertyAny = property as any;
+          let propertyWithCoordinates;
+          
+          // Check if lat/lon values are present
+          if (propertyAny.lat !== undefined && propertyAny.lon !== undefined) {
+            propertyWithCoordinates = {
+              ...property,
+              latitude: propertyAny.lat,
+              longitude: propertyAny.lon
+            };
+          } 
+          // If we already have latitude/longitude fields populated, use those
+          else if (propertyAny.latitude !== undefined && propertyAny.longitude !== undefined) {
+            propertyWithCoordinates = property;
+          }
+          // Fallback to default coordinates (NYC) if no coordinates found
+          else {
+            propertyWithCoordinates = {
+              ...property,
+              latitude: 40.7128,
+              longitude: -74.0060
+            };
+          }
+          
+          return { savedId: saved.id, property: propertyWithCoordinates };
         })
       );
       res.json(result);
