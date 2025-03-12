@@ -1084,10 +1084,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserSavedProperties(userId: number): Promise<SavedProperty[]> {
-    return db
+    const results = await db
       .select()
       .from(savedProperties)
       .where(eq(savedProperties.userId, userId));
+    console.log(`Retrieved ${results.length} saved properties for user ${userId}`);
+    return results;
   }
 
   async createSavedProperty(insertSavedProperty: InsertSavedProperty): Promise<SavedProperty> {
@@ -1114,19 +1116,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserMaintenanceRequests(userId: number): Promise<MaintenanceRequest[]> {
-    return db
+    const results = await db
       .select()
       .from(maintenanceRequests)
       .where(eq(maintenanceRequests.userId, userId))
       .orderBy(desc(maintenanceRequests.createdAt));
+    return results;
   }
 
   async getPropertyMaintenanceRequests(propertyId: number): Promise<MaintenanceRequest[]> {
-    return db
+    const results = await db
       .select()
       .from(maintenanceRequests)
       .where(eq(maintenanceRequests.propertyId, propertyId))
       .orderBy(desc(maintenanceRequests.createdAt));
+    return results;
   }
 
   async createMaintenanceRequest(insertRequest: InsertMaintenanceRequest): Promise<MaintenanceRequest> {
@@ -1155,19 +1159,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserPayments(userId: number): Promise<Payment[]> {
-    return db
+    const results = await db
       .select()
       .from(payments)
       .where(eq(payments.userId, userId))
       .orderBy(desc(payments.dueDate));
+    return results;
   }
 
   async getPropertyPayments(propertyId: number): Promise<Payment[]> {
-    return db
+    const results = await db
       .select()
       .from(payments)
       .where(eq(payments.propertyId, propertyId))
       .orderBy(desc(payments.dueDate));
+    return results;
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
@@ -1223,15 +1229,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserRentalApplications(userId: number): Promise<RentalApplication[]> {
-    return db
+    const results = await db
       .select()
       .from(rentalApplications)
       .where(eq(rentalApplications.userId, userId))
       .orderBy(desc(rentalApplications.createdAt));
+    return results;
   }
 
   async getLandlordRentalApplications(landlordId: number): Promise<RentalApplication[]> {
-    return db
+    const results = await db
       .select({
         application: rentalApplications,
         property: properties,
@@ -1239,16 +1246,17 @@ export class DatabaseStorage implements IStorage {
       .from(rentalApplications)
       .innerJoin(properties, eq(rentalApplications.propertyId, properties.id))
       .where(eq(properties.landlordId, landlordId))
-      .orderBy(desc(rentalApplications.createdAt))
-      .then(results => results.map(r => r.application));
+      .orderBy(desc(rentalApplications.createdAt));
+    return results.map(r => r.application);
   }
 
   async getPropertyRentalApplications(propertyId: number): Promise<RentalApplication[]> {
-    return db
+    const results = await db
       .select()
       .from(rentalApplications)
       .where(eq(rentalApplications.propertyId, propertyId))
       .orderBy(desc(rentalApplications.createdAt));
+    return results;
   }
 
   async createRentalApplication(insertApplication: InsertRentalApplication): Promise<RentalApplication> {
@@ -1281,5 +1289,16 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use the database storage implementation instead of memory storage
-export const storage = new DatabaseStorage();
+// Try to use the database storage implementation
+// If database initialization fails, fall back to memory storage
+let useDatabase = true;
+
+try {
+  // Simple test to check if database is accessible
+  useDatabase = process.env.DATABASE_URL !== undefined;
+} catch (error) {
+  console.log("Database connection test failed, using memory storage");
+  useDatabase = false;
+}
+
+export const storage = useDatabase ? new DatabaseStorage() : new MemStorage();

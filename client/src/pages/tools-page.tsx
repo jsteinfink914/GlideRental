@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapComparison } from "@/components/rentals/MapComparison";
+import RentCalculator from "@/components/tools/RentCalculator";
 
 export default function ToolsPage() {
   const { user } = useAuth();
@@ -235,12 +236,13 @@ export default function ToolsPage() {
               </TabsContent>
               
               <TabsContent value="calculator">
-                <div className="py-6 text-center">
-                  <p className="text-lg mb-4">Rent calculator coming soon!</p>
-                  <p className="text-text-medium">
-                    We're working on a tool to help you calculate total monthly costs,
-                    including rent, utilities, and other expenses.
-                  </p>
+                <div className="py-6">
+                  {/* Rent Calculator Component */}
+                  <RentCalculator 
+                    initialRent={selectedPropertyIds.length > 0 && propertiesForComparison.length > 0 
+                      ? propertiesForComparison[0].rent 
+                      : 2000} 
+                  />
                 </div>
               </TabsContent>
               

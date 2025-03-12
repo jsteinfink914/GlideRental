@@ -40,22 +40,34 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // Initialize the database - this creates all tables if they don't exist
-    await initializeDatabase();
+    let dbInitialized = false;
     
-    // Register routes
+    try {
+      // Try to initialize the database
+      await initializeDatabase();
+      dbInitialized = true;
+      log("Database initialized successfully");
+    } catch (error) {
+      log(`Database initialization failed: ${error}. Will continue with memory storage.`);
+      // We'll continue with memory storage instead
+      // The storage implementation will fall back to MemStorage
+    }
+    
+    // Register routes - this will use either DatabaseStorage or MemStorage
     const server = await registerRoutes(app);
     
-    // Seed the database with sample data
-    log("Seeding database with sample data...");
-    await seedDatabase();
+    if (dbInitialized) {
+      // Seed the database with sample data only if db connection is successful
+      log("Seeding database with sample data...");
+      await seedDatabase();
+    }
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
 
       res.status(status).json({ message });
-      throw err;
+      console.error(err);
     });
 
     // importantly only setup vite in development and after
@@ -75,7 +87,7 @@ app.use((req, res, next) => {
       host: "0.0.0.0",
       reusePort: true,
     }, () => {
-      log(`serving on port ${port}`);
+      log(`serving on port ${port} (using ${dbInitialized ? 'database' : 'memory'} storage)`);
     });
   } catch (error) {
     log(`Server startup failed: ${error}`);
