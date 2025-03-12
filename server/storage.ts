@@ -940,7 +940,10 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return query;
+    // Execute the query and return the results
+    const results = await query;
+    console.log(`Retrieved ${results.length} properties from database`);
+    return results;
   }
 
   async getLandlordProperties(landlordId: number): Promise<Property[]> {
