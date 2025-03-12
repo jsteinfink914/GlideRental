@@ -122,7 +122,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Returning ${properties.length} properties after filtering`);
-      res.json(properties);
+      
+      // Map lat/lon to latitude/longitude for frontend components
+      const propertiesWithMappedCoordinates = properties.map(property => {
+        // Handle the case where properties have lat/lon fields from the database
+        // but the TypeScript type doesn't know about them
+        const propertyAny = property as any;
+        return {
+          ...property,
+          latitude: propertyAny.lat,
+          longitude: propertyAny.lon
+        };
+      });
+      
+      res.json(propertiesWithMappedCoordinates);
     } catch (error) {
       console.error("Error fetching properties:", error);
       res.status(500).json({ message: "Error fetching properties" });
@@ -152,7 +165,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No properties found with the provided IDs" });
       }
       
-      res.json(validProperties);
+      // Map lat/lon to latitude/longitude for frontend components
+      const propertiesWithMappedCoordinates = validProperties.map(property => {
+        // Handle the case where properties have lat/lon fields from the database
+        // but the TypeScript type doesn't know about them
+        const propertyAny = property as any;
+        return {
+          ...property,
+          latitude: propertyAny.lat,
+          longitude: propertyAny.lon
+        };
+      });
+      
+      res.json(propertiesWithMappedCoordinates);
     } catch (error) {
       console.error("Error fetching properties for comparison:", error);
       res.status(500).json({ message: "Error fetching properties for comparison" });
@@ -166,7 +191,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
-      res.json(property);
+      
+      // Map lat/lon to latitude/longitude for frontend components
+      const propertyAny = property as any;
+      const propertyWithMappedCoordinates = {
+        ...property,
+        latitude: propertyAny.lat,
+        longitude: propertyAny.lon
+      };
+      
+      res.json(propertyWithMappedCoordinates);
     } catch (error) {
       res.status(500).json({ message: "Error fetching property" });
     }
