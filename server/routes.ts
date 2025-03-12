@@ -128,12 +128,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle the case where properties have lat/lon fields from the database
         // but the TypeScript type doesn't know about them
         const propertyAny = property as any;
+        
+        // Check if lat/lon values are present
+        if (propertyAny.lat !== undefined && propertyAny.lon !== undefined) {
+          return {
+            ...property,
+            latitude: propertyAny.lat,
+            longitude: propertyAny.lon
+          };
+        }
+        
+        // If we already have latitude/longitude fields populated, use those
+        if (propertyAny.latitude !== undefined && propertyAny.longitude !== undefined) {
+          return property;
+        }
+        
+        // Fallback to default coordinates (NYC) if no coordinates found
         return {
           ...property,
-          latitude: propertyAny.lat,
-          longitude: propertyAny.lon
+          latitude: 40.7128,
+          longitude: -74.0060
         };
       });
+      
+      console.log("Returning property with coordinates:", 
+        propertiesWithMappedCoordinates[0]?.latitude, 
+        propertiesWithMappedCoordinates[0]?.longitude
+      );
       
       res.json(propertiesWithMappedCoordinates);
     } catch (error) {
@@ -170,12 +191,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle the case where properties have lat/lon fields from the database
         // but the TypeScript type doesn't know about them
         const propertyAny = property as any;
+        
+        // Check if lat/lon values are present
+        if (propertyAny.lat !== undefined && propertyAny.lon !== undefined) {
+          return {
+            ...property,
+            latitude: propertyAny.lat,
+            longitude: propertyAny.lon
+          };
+        }
+        
+        // If we already have latitude/longitude fields populated, use those
+        if (propertyAny.latitude !== undefined && propertyAny.longitude !== undefined) {
+          return property;
+        }
+        
+        // Fallback to default coordinates (NYC) if no coordinates found
         return {
           ...property,
-          latitude: propertyAny.lat,
-          longitude: propertyAny.lon
+          latitude: 40.7128,
+          longitude: -74.0060
         };
       });
+      
+      console.log("Returning comparison properties with coordinates:", 
+        propertiesWithMappedCoordinates.map(p => ({ id: p.id, lat: p.latitude, lng: p.longitude }))
+      );
       
       res.json(propertiesWithMappedCoordinates);
     } catch (error) {
